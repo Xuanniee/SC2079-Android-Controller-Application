@@ -1,11 +1,14 @@
-package com.example.sc2079androidcontroller.features.bluetooth.network
+package com.sc2079.androidcontroller.features.bluetooth.network
 
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
-import com.example.sc2079androidcontroller.gui.hasBluetoothConnectPermission
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -19,7 +22,8 @@ import java.io.OutputStreamWriter
 import java.util.UUID
 
 class BluetoothService (
-
+    private val context: Context,
+    private val scope: CoroutineScope
 ) {
     /**
      * Track the various possible Bluetooth Connection States
@@ -54,10 +58,18 @@ class BluetoothService (
     // TODO Check this first if fails to connect via BT
     private val sppUuid: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
+    // Helper function to check Bluetooth permissions
+    private fun hasBluetoothConnectPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.BLUETOOTH_CONNECT
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
     // Retrieves a list of Android devices previously connected via BT
-    fun getBondedDevices(context: Context): List<BluetoothDevice> {
+    fun getBondedDevices(): List<BluetoothDevice> {
         // Check if the User has provided permissions to access the devices' bonded list
-        if (!hasBluetoothConnectPermission(context)) return emptyList()
+        if (!hasBluetoothConnectPermission()) return emptyList()
 
         // Retrieve the local bluetooth adapter on the device
         val bluetoothManager = context.getSystemService(BluetoothManager::class.java) ?: return emptyList()
@@ -76,14 +88,14 @@ class BluetoothService (
         disconnect()
 
         // Retrieve the local bluetooth adapter on the device
-        val bluetoothManager = context.getSystemService(BluetoothManager::class.java) ?: return emptyList()
-        val localBluetoothAdapter = bluetoothManager.adapter ?: return emptyList()
+        val bluetoothManager = context.getSystemService(BluetoothManager::class.java)
+        val localBluetoothAdapter = bluetoothManager?.adapter
 
-        if (adapter == null) {
+        if (localBluetoothAdapter == null) {
             _bluetoothState.value = BluetoothConnState.Error("Bluetooth not supported on this device")
             return
         }
-        if (!adapter.isEnabled) {
+        if (!localBluetoothAdapter.isEnabled) {
             _bluetoothState.value = BluetoothConnState.Error("Bluetooth is disabled. Please enable Bluetooth.")
             return
         }
@@ -94,39 +106,39 @@ class BluetoothService (
         scope.launch(Dispatchers.IO) {
             try {
                 // Cancel discovery because it slows down connection
-                adapter.cancelDiscovery()
+                localBluetoothAdapter.cancelDiscovery()
 
                 val sock = device.createRfcommSocketToServiceRecord(sppUuid)
                 sock.connect()
 
-                socket = sock
-                writer = OutputStreamWriter(sock.outputStream)
+                bluetoothSocket = sock
+                bluetoothWriter = OutputStreamWriter(sock.outputStream)
 
-                _state.value = ConnState.Connected(name)
+                _bluetoothState.value = BluetoothConnState.Connected(name)
 
                 startReaderLoop(sock)
             } catch (e: Exception) {
-                _state.value = ConnState.Error("Connect failed: ${e.message}")
+                _bluetoothState.value = BluetoothConnState.Error("Connect failed: ${e.message}")
                 disconnect()
             }
         }
     }
 
     /**
-     * Rece
+     * Start reading incoming messages from the Bluetooth socket
      */
     private fun startReaderLoop(sock: BluetoothSocket) {
-        readerJob?.cancel()
-        readerJob = scope.launch(Dispatchers.IO) {
+        bluetoothReader?.cancel()
+        bluetoothReader = scope.launch(Dispatchers.IO) {
             try {
                 val br = BufferedReader(InputStreamReader(sock.inputStream))
                 while (true) {
                     val line = br.readLine() ?: break // null means disconnected
-                    _incomingLines.tryEmit(line)
+                    _incomingMessages.tryEmit(line)
                 }
-                _state.value = ConnState.Disconnected
+                _bluetoothState.value = BluetoothConnState.Disconnected
             } catch (e: Exception) {
-                _state.value = ConnState.Error("Disconnected: ${e.message}")
+                _bluetoothState.value = BluetoothConnState.Error("Disconnected: ${e.message}")
             } finally {
                 disconnect()
             }
@@ -136,29 +148,29 @@ class BluetoothService (
     fun sendLine(line: String) {
         scope.launch(Dispatchers.IO) {
             try {
-                val w = writer ?: throw IllegalStateException("Not connected")
+                val w = bluetoothWriter ?: throw IllegalStateException("Not connected")
                 w.write(line)
                 w.write("\n")
                 w.flush()
             } catch (e: Exception) {
-                _state.value = ConnState.Error("Send failed: ${e.message}")
+                _bluetoothState.value = BluetoothConnState.Error("Send failed: ${e.message}")
                 disconnect()
             }
         }
     }
 
     fun disconnect() {
-        try { readerJob?.cancel() } catch (_: Exception) {}
-        readerJob = null
+        try { bluetoothReader?.cancel() } catch (_: Exception) {}
+        bluetoothReader = null
 
-        try { writer?.close() } catch (_: Exception) {}
-        writer = null
+        try { bluetoothWriter?.close() } catch (_: Exception) {}
+        bluetoothWriter = null
 
-        try { socket?.close() } catch (_: Exception) {}
-        socket = null
+        try { bluetoothSocket?.close() } catch (_: Exception) {}
+        bluetoothSocket = null
 
-        if (_state.value is ConnState.Connecting || _state.value is ConnState.Connected) {
-            _state.value = ConnState.Disconnected
+        if (_bluetoothState.value is BluetoothConnState.Connecting || _bluetoothState.value is BluetoothConnState.Connected) {
+            _bluetoothState.value = BluetoothConnState.Disconnected
         }
     }
 
