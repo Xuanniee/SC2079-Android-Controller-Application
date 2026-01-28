@@ -1,3 +1,54 @@
 <resources>
-    <string name="app_name">SC2079 Android Controller Application</string>
+    <string name="app_name">SC2079 Controller</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_bluetooth">Bluetooth</string>
+    <string name="nav_navigation">Navigation</string>
+    <string name="nav_theme">Theme</string>
+    <string name="nav_language">Language</string>
+    
+    <!-- Language -->
+    <string name="lang_system">System</string>
+    <string name="lang_english">English</string>
+    <string name="lang_malay">Malay</string>
+    <string name="lang_tamil">Tamil</string>
+    <string name="lang_chinese_simplified">Chinese Simplified</string>
+    
+    <!-- Theme -->
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_contrast">Contrast</string>
+    
+    <!-- Home Screen -->
+    <string name="device_connected">DEVICE NAME: CONNECTED</string>
+    <string name="device_disconnected">DEVICE: DISCONNECTED</string>
+    <string name="controls">Controls</string>
+    <string name="activity_status">Activity Status</string>
+    <string name="status_subhead">Subhead</string>
+    <string name="action">Action</string>
+    
+    <!-- Bluetooth Screen -->
+    <string name="bluetooth_title">Bluetooth</string>
+    <string name="bluetooth_screen">Bluetooth Screen</string>
+    <string name="bluetooth_connect_message">Connect to your robot device</string>
+    <string name="bluetooth_scan">Scan</string>
+    <string name="bluetooth_no_devices">No devices found</string>
+    <string name="bluetooth_device_address">Address: %1$s</string>
+    <string name="bluetooth_device_rssi">Signal: %1$d dBm</string>
+    <string name="bluetooth_connect">Connect</string>
+    
+    <!-- Map -->
+    <string name="map_arena">Arena Map</string>
+    <string name="map_tap_to_select">Tap on a cell to select it</string>
+    <string name="map_selected">Selected: Row %1$d, Column %2$d</string>
+    
+    <!-- Common -->
+    <string name="menu">Menu</string>
+    <string name="back">Back</string>
+    <string name="retry">Retry</string>
+    <string name="loading">Loading…</string>
+    <string name="changing_language">Changing language…</string>
+    <string name="error_title">Something went wrong</string>
+    <string name="error_message">An unexpected error occurred. Please try again.</string>
 </resources>
