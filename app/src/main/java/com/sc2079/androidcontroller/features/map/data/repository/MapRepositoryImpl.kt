@@ -4,86 +4,122 @@ import com.sc2079.androidcontroller.features.map.data.local.MapPreferencesDataSo
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.features.map.domain.model.MapSnapshot
 import com.sc2079.androidcontroller.features.map.domain.model.Obstacle
-import com.sc2079.androidcontroller.features.map.domain.model.RobotPose
+import com.sc2079.androidcontroller.features.map.domain.model.RobotPosition
 import com.sc2079.androidcontroller.features.map.domain.repository.MapRepository
 import org.json.JSONArray
 import org.json.JSONObject
 
+/**
+ * Data-layer implementation of the MapRepository contract.
+ *
+ * Responsible for:
+ * - Serializing MapSnapshot <-> JSON
+ * - Delegating raw persistence to MapPreferencesDataSource
+ */
 class MapRepositoryImpl(
-    private val local: MapPreferencesDataSource
+    private val localMapData: MapPreferencesDataSource
 ) : MapRepository {
-
-    override fun saveSnapshot(name: String, snapshot: MapSnapshot) {
-        local.putJson(name, encode(snapshot).toString())
+    // Override function to save snapshot of map locally on disk as a xml file
+    override fun saveMapSnapshot(snapshotName: String, snapshot: MapSnapshot) {
+        // Encode and save the Map as a JSON String
+        localMapData.writeMapJson(snapshotName, encodeMapToJson(snapshot).toString())
     }
 
-    override fun loadSnapshot(name: String): MapSnapshot? {
-        val raw = local.getJson(name) ?: return null
-        return decode(JSONObject(raw))
+    // Retrieve JSON Map string from local storage
+    override fun loadMapSnapshot(snapshotName: String): MapSnapshot? {
+        // Retrieve JSON String, null if doesnt exist
+        val rawJsonString = localMapData.getMapJson(snapshotName) ?: return null
+
+        // Translate back into a MapSnapshot object and return
+        return decodeJsonToMap(JSONObject(rawJsonString))
     }
 
-    override fun listSnapshots(): List<String> = local.keys().sorted()
+    // Retrieve all the names of the maps saved previously
+    override fun listMapSnapshots(): List<String> {
+        return localMapData.retrieveSavedMapKeys().sorted()
+    }
 
-    override fun deleteSnapshot(name: String) = local.delete(name)
+    // Delete a particular snapshot that was saved previously
+    override fun deleteMapSnapshot(snapshotName: String) {
+        localMapData.deleteMapJson(snapshotName)
+    }
 
-    private fun encode(s: MapSnapshot): JSONObject {
-        val root = JSONObject()
-        root.put("nextObstacleNo", s.nextObstacleNo)
+    // Serialises the state of my MapSnapshot into a JSON object
+    private fun encodeMapToJson(mapSnapshot: MapSnapshot): JSONObject {
+        // Createa JSON Object to hold the data from the MapSnapshot
+        val mapJsonObject = JSONObject()
 
-        val robot = s.robotPose?.let {
+        // Place all the properties of a MapSnapshot into the JSON Object
+        mapJsonObject.put("nextObstacleId", mapSnapshot.nextObstacleId)
+        // Store the robotPosition into a JSON object
+        val robotPosition = mapSnapshot.robotPosition?.let {
             JSONObject()
                 .put("x", it.x)
                 .put("y", it.y)
-                .put("dir", it.dir.name)
+                .put("faceDir", it.faceDir.name)
         }
-        root.put("robotPose", robot ?: JSONObject.NULL)
+        mapJsonObject.put("robotPosition", robotPosition ?: JSONObject.NULL)
 
-        val obsArr = JSONArray()
-        s.obstacles.forEach { o ->
-            obsArr.put(
+        // Store each obstacle into the array of JSON Object
+        val obstacleArr = JSONArray()
+        mapSnapshot.obstacles.forEach { o ->
+            obstacleArr.put(
                 JSONObject()
-                    .put("no", o.no)
+                    .put("obstacleId", o.obstacleId)
                     .put("x", o.x)
                     .put("y", o.y)
-                    .put("face", o.face.name)
-                    .put("targetId", o.targetId ?: JSONObject.NULL)
+                    .put("faceDir", o.faceDir.name)
+                    .put("displayedTargetId", o.displayedTargetId ?: JSONObject.NULL)
             )
         }
-        root.put("obstacles", obsArr)
-        return root
+        mapJsonObject.put("obstacles", obstacleArr)
+
+        return mapJsonObject
     }
 
-    private fun decode(obj: JSONObject): MapSnapshot {
-        val next = obj.optInt("nextObstacleNo", 1)
+    // Deserialise a JSONObject back into a MapSnapshot to be used
+    private fun decodeJsonToMap(obj: JSONObject): MapSnapshot {
+        // Extract all the properties of a MapSnapshot from the JSONObject
+        val nextObstacleId = obj.optInt("nextObstacleId", 1)
 
-        val robotPose = obj.opt("robotPose").let { v ->
-            if (v == null || v == JSONObject.NULL) null
+        // Extract the RobotPosition JSONObject if it exists
+        val robotPosition = obj.opt("robotPosition").let { robotPositionJsonRaw ->
+            if (robotPositionJsonRaw == null || robotPositionJsonRaw == JSONObject.NULL) null
             else {
-                val r = v as JSONObject
-                val dir = FaceDir.valueOf(r.getString("dir"))
-                RobotPose(r.getInt("x"), r.getInt("y"), dir)
+                val robotPositionJson = robotPositionJsonRaw as JSONObject
+
+                // Extract the attributes and convert it into a RobotPosition Type
+                val faceDir = FaceDir.valueOf(robotPositionJson.getString("faceDir"))
+                RobotPosition(robotPositionJson.getInt("x"), robotPositionJson.getInt("y"), faceDir)
             }
         }
 
+        // Create a mutable array to store all our obstacles
         val obstacles = mutableListOf<Obstacle>()
-        val arr = obj.optJSONArray("obstacles") ?: JSONArray()
-        for (i in 0 until arr.length()) {
-            val o = arr.getJSONObject(i)
+        // Extract the JSON Array obstacles if it exists
+        val obstaclesJsonArr = obj.optJSONArray("obstacles") ?: JSONArray()
+        // Iterate through the JSON Arr and extract each obstacke
+        for (i in 0 until obstaclesJsonArr.length()) {
+            // Extract the current obstacle
+            val obstacle = obstaclesJsonArr.getJSONObject(i)
+            // Append the copied obstacle object from Jsonarr to an array of type Obstacle
             obstacles.add(
                 Obstacle(
-                    no = o.getInt("no"),
-                    x = o.getInt("x"),
-                    y = o.getInt("y"),
-                    face = FaceDir.valueOf(o.getString("face")),
-                    targetId = o.opt("targetId").let { if (it == null || it == JSONObject.NULL) null else it.toString() }
+                    obstacleId = obstacle.getInt("obstacleId"),
+                    x = obstacle.getInt("x"),
+                    y = obstacle.getInt("y"),
+                    faceDir = FaceDir.valueOf(obstacle.getString("faceDir")),
+                    displayedTargetId = obstacle.opt("displayedTargetId")
+                        .let { if (it == null || it == JSONObject.NULL) null else it.toString() }
                 )
             )
         }
 
+        // Return the decoded MapSnapshot
         return MapSnapshot(
-            robotPose = robotPose,
-            obstacles = obstacles.sortedBy { it.no },
-            nextObstacleNo = next
+            robotPosition = robotPosition,
+            obstacles = obstacles.sortedBy { it.obstacleId },
+            nextObstacleId = nextObstacleId
         )
     }
 }

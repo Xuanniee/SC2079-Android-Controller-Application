@@ -7,19 +7,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-
 import com.sc2079.androidcontroller.features.bluetooth.data.BluetoothClassicManager
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewmodelFactory
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothChatScreen
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothSetupScreen
-import com.sc2079.androidcontroller.features.map.ui.MappingHomeScreen // <-- adjust if your file name differs
+import com.sc2079.androidcontroller.features.map.ui.MappingHomeScreen
 import com.sc2079.androidcontroller.ui.theme.SC2079AndroidControllerApplicationTheme
 
 /**
@@ -28,11 +28,10 @@ import com.sc2079.androidcontroller.ui.theme.SC2079AndroidControllerApplicationT
  * Requests for BT Permissions before running the Setup for the Controller.
  */
 class MainActivity : ComponentActivity() {
-    // Creates a Launcher Dialog to handle the results of Permission requests
+
     private val permissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ -> }
 
-    // Helper to request for BT in Android
     private fun requestBluetoothPermissions() {
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             arrayOf(
@@ -57,15 +56,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             SC2079AndroidControllerApplicationTheme {
-                LaunchedEffect(Unit) {
-                    requestBluetoothPermissions()
-                }
+                LaunchedEffect(Unit) { requestBluetoothPermissions() }
 
                 val bluetoothViewModel: BluetoothViewModel = viewModel(
                     factory = BluetoothViewmodelFactory(bluetoothManager)
                 )
 
-                // Default to Setup screen
                 var currentScreen by remember { mutableStateOf(MainScreen.Setup) }
 
                 Scaffold(
@@ -93,34 +89,28 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { innerPadding ->
-                    val contentModifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
 
-                    when (currentScreen) {
-                        MainScreen.Setup -> {
-                            // BT Setup screen
-                            BluetoothSetupScreen(
+                    // KEY: apply scaffold padding (accounts for bottom bar) + IME padding
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .imePadding()
+                    ) {
+                        when (currentScreen) {
+                            MainScreen.Setup -> BluetoothSetupScreen(
                                 bluetoothViewModel = bluetoothViewModel,
                                 onOpenChat = { currentScreen = MainScreen.Chat }
                             )
-                        }
 
-                        MainScreen.Chat -> {
-                            // Chat screen
-                            BluetoothChatScreen(
+                            MainScreen.Chat -> BluetoothChatScreen(
                                 bluetoothViewModel = bluetoothViewModel,
                                 onBack = { currentScreen = MainScreen.Setup }
                             )
-                        }
 
-                        MainScreen.Map -> {
-                            // Mapping module home screen (C5/C6/C7/C9/C10)
-                            // It needs the same bluetoothViewModel to receive/send messages.
-                            // If you named it differently, update this call.
-                            Surface(modifier = contentModifier) {
-                                MappingHomeScreen(bluetoothViewModel = bluetoothViewModel)
-                            }
+                            MainScreen.Map -> MappingHomeScreen(
+                                bluetoothViewModel = bluetoothViewModel
+                            )
                         }
                     }
                 }
@@ -128,6 +118,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 
 
 //package com.sc2079.androidcontroller

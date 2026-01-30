@@ -41,10 +41,10 @@ fun MappingScreen(
     // Dropdown state
     var expanded by remember { mutableStateOf(false) }
 
-    val robotLabel = uiState.robotPose?.let { "(${it.x},${it.y}) ${it.dir}" } ?: "(not set)"
+    val robotLabel = uiState.robotPosition?.let { "(${it.x},${it.y}) ${it.faceDir}" } ?: "(not set)"
     val modeItems = remember {
         listOf(
-            ModeItem(MapEditMode.Default, "None", Icons.Filled.Settings),
+            ModeItem(MapEditMode.Cursor, "Cursor", Icons.Filled.Settings),
             ModeItem(MapEditMode.SetStart, "Set Start", Icons.Filled.Flag),
             ModeItem(MapEditMode.PlaceObstacle, "Place Obstacle", Icons.Filled.Edit),
             ModeItem(MapEditMode.DragObstacle, "Drag Obstacle", Icons.Filled.OpenWith),

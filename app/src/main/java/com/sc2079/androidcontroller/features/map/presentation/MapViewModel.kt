@@ -13,17 +13,26 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * ViewModel Layer for the Map Module
+ *
+ * - Hold the Ui facing state for Map
+ * - Translate domains state to uistaet and expose it for UI to see
+ */
 class MapViewModel(
-    private val repo: MapRepository,
+    private val mapRepository: MapRepository,
+    // UseCase Functions
     private val resetMap: ResetMapUseCase = ResetMapUseCase(),
     private val addObstacle: AddObstacleUseCase = AddObstacleUseCase(),
     private val moveObstacle: MoveObstacleUseCase = MoveObstacleUseCase(),
     private val removeObstacle: RemoveObstacleUseCase = RemoveObstacleUseCase(),
     private val setObstacleFace: SetObstacleFaceUseCase = SetObstacleFaceUseCase(),
-    private val setRobotPose: SetRobotPoseUseCase = SetRobotPoseUseCase(),
-    private val updateTargetId: UpdateTargetIdUseCase = UpdateTargetIdUseCase()
+    private val setRobotPosition: SetRobotPositionUseCase = SetRobotPositionUseCase(),
+    private val updateObstacleTargetId: UpdateObstacleTargetIdUseCase = UpdateObstacleTargetIdUseCase()
 ) : ViewModel() {
-
+    /**
+     *
+     */
     private var snapshot: MapSnapshot = resetMap()
 
     private val _uiState = MutableStateFlow(MapUiState())
@@ -34,21 +43,24 @@ class MapViewModel(
         publish()
     }
 
+    /**
+     *
+     */
     fun setEditMode(mode: MapEditMode) {
         _uiState.update { it.copy(editMode = mode) }
     }
 
     fun resetAll() {
         snapshot = resetMap()
-        _uiState.update { it.copy(robotStatus = "", editMode = MapEditMode.Default) }
+        _uiState.update { it.copy(robotStatus = "", editMode = MapEditMode.Cursor) }
         publish()
     }
 
     fun onTapCell(x: Int, y: Int): Obstacle? {
         return when (_uiState.value.editMode) {
             MapEditMode.SetStart -> {
-                val dir = snapshot.robotPose?.dir ?: FaceDir.UP
-                snapshot = setRobotPose(snapshot, x, y, dir)
+                val dir = snapshot.robotPosition?.faceDir ?: FaceDir.UP
+                snapshot = setRobotPosition(snapshot, x, y, dir)
                 publish()
                 null
             }
@@ -57,11 +69,11 @@ class MapViewModel(
                 snapshot = addObstacle(snapshot, x, y)
                 publish()
                 // return newly added (if any)
-                snapshot.obstacles.firstOrNull { it.no == snapshot.nextObstacleNo - 1 && before.nextObstacleNo != snapshot.nextObstacleNo }
+                snapshot.obstacles.firstOrNull { it.obstacleId == snapshot.nextObstacleId - 1 && before.nextObstacleId != snapshot.nextObstacleId }
             }
             MapEditMode.ChangeObstacleFace,
             MapEditMode.DragObstacle,
-            MapEditMode.Default -> null
+            MapEditMode.Cursor -> null
         }
     }
 
@@ -69,11 +81,11 @@ class MapViewModel(
         val before = snapshot
         snapshot = moveObstacle(snapshot, obstacleNo, x, y)
         publish()
-        return if (before != snapshot) snapshot.obstacles.firstOrNull { it.no == obstacleNo } else null
+        return if (before != snapshot) snapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } else null
     }
 
     fun removeObstacleByNo(obstacleNo: Int): Obstacle? {
-        val existing = snapshot.obstacles.firstOrNull { it.no == obstacleNo } ?: return null
+        val existing = snapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } ?: return null
         snapshot = removeObstacle(snapshot, obstacleNo)
         publish()
         return existing
@@ -83,7 +95,7 @@ class MapViewModel(
         val before = snapshot
         snapshot = setObstacleFace(snapshot, obstacleNo, face)
         publish()
-        return if (before != snapshot) snapshot.obstacles.firstOrNull { it.no == obstacleNo } else null
+        return if (before != snapshot) snapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } else null
     }
 
     fun applyRobotMessage(raw: String) {
@@ -97,12 +109,12 @@ class MapViewModel(
             when (e) {
                 is RobotInboundEvent.StatusEvent -> status = e.status
                 is RobotInboundEvent.RobotPoseEvent -> {
-                    s = setRobotPose(s, e.x, e.y, e.dir)
+                    s = setRobotPosition(s, e.x, e.y, e.dir)
                 }
                 is RobotInboundEvent.TargetEvent -> {
                     // Java used cmd[1]-1 for internal; checklist uses obstacle number directly.
                     // We follow checklist: obstacleNo matches displayed obstacle number.
-                    s = updateTargetId(s, e.obstacleNo, e.targetId)
+                    s = updateObstacleTargetId(s, e.obstacleNo, e.targetId)
                 }
             }
         }
@@ -114,14 +126,14 @@ class MapViewModel(
 
     fun saveCurrentMap(name: String) {
         viewModelScope.launch {
-            repo.saveSnapshot(name.trim(), snapshot)
+            mapRepository.saveMapSnapshot(name.trim(), snapshot)
             refreshSavedMaps()
         }
     }
 
     fun loadMap(name: String) {
         viewModelScope.launch {
-            val loaded = repo.loadSnapshot(name) ?: return@launch
+            val loaded = mapRepository.loadMapSnapshot(name) ?: return@launch
             snapshot = loaded
             publish()
         }
@@ -129,14 +141,14 @@ class MapViewModel(
 
     fun deleteMap(name: String) {
         viewModelScope.launch {
-            repo.deleteSnapshot(name)
+            mapRepository.deleteMapSnapshot(name)
             refreshSavedMaps()
         }
     }
 
     private fun refreshSavedMaps() {
         viewModelScope.launch {
-            val names = repo.listSnapshots()
+            val names = mapRepository.listMapSnapshots()
             _uiState.update { it.copy(savedMaps = names) }
         }
     }
@@ -144,8 +156,8 @@ class MapViewModel(
     private fun publish() {
         _uiState.update {
             it.copy(
-                robotPose = snapshot.robotPose,
-                obstacles = snapshot.obstacles.sortedBy { o -> o.no }
+                robotPosition = snapshot.robotPosition,
+                obstacles = snapshot.obstacles.sortedBy { o -> o.obstacleId }
             )
         }
     }

@@ -5,11 +5,11 @@ import androidx.lifecycle.ViewModelProvider
 import com.sc2079.androidcontroller.features.map.domain.repository.MapRepository
 
 class MapViewModelFactory(
-    private val repo: MapRepository
+    private val mapRepository: MapRepository
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(MapViewModel::class.java))
-        return MapViewModel(repo) as T
+        return MapViewModel(mapRepository) as T
     }
 }

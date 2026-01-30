@@ -9,7 +9,9 @@ package com.sc2079.androidcontroller.features.map.domain.model
  * - Dragging Obstacle
  */
 enum class MapEditMode {
-    Default,
+    // Default Mode that prevents users from making unnecessary changes
+    Cursor,
+    // Place Robot's Starting Position
     SetStart,
     PlaceObstacle,
     DragObstacle,

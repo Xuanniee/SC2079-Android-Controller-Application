@@ -3,13 +3,21 @@ package com.sc2079.androidcontroller.features.map.domain.usecase
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.features.map.domain.model.MapSnapshot
 
+/**
+ * Update the Face of the Obstacle that holds the target number for the Robot to observe
+ */
 class SetObstacleFaceUseCase {
-    operator fun invoke(snapshot: MapSnapshot, obstacleNo: Int, face: FaceDir): MapSnapshot {
-        val idx = snapshot.obstacles.indexOfFirst { it.no == obstacleNo }
-        if (idx < 0) return snapshot
+    operator fun invoke(mapSnapshot: MapSnapshot, obstacleId: Int, faceDir: FaceDir): MapSnapshot {
+        // Retrieve the idx of the target obstacle
+        val targetIdx = mapSnapshot.obstacles.indexOfFirst { it.obstacleId == obstacleId }
+        if (targetIdx < 0) {
+            // Failed to find the obstacle in the list
+            return mapSnapshot
+        }
 
-        val updated = snapshot.obstacles[idx].copy(face = face)
-        val newList = snapshot.obstacles.toMutableList().also { it[idx] = updated }
-        return snapshot.copy(obstacles = newList)
+        // Create an updated obstacle with a different face direction and set it in the array
+        val updatedObstacle = mapSnapshot.obstacles[targetIdx].copy(faceDir = faceDir)
+        val newList = mapSnapshot.obstacles.toMutableList().also { it[targetIdx] = updatedObstacle }
+        return mapSnapshot.copy(obstacles = newList)
     }
 }

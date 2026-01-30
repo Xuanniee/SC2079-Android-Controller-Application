@@ -67,7 +67,7 @@ fun GridMapCanvas(
                     when (uiState.editMode) {
                         MapEditMode.ChangeObstacleFace -> {
                             val hit = uiState.obstacles.firstOrNull { it.x == cell.x && it.y == cell.y }
-                            if (hit != null) onTapObstacleForFace(hit.no)
+                            if (hit != null) onTapObstacleForFace(hit.obstacleId)
                         }
                         else -> onTapCell(cell.x, cell.y)
                     }
@@ -93,8 +93,8 @@ fun GridMapCanvas(
                         val hit = uiState.obstacles.firstOrNull { it.x == cell.x && it.y == cell.y }
                             ?: return@detectDragGestures
 
-                        draggingObstacleNo = hit.no
-                        onStartDragObstacle(hit.no)
+                        draggingObstacleNo = hit.obstacleId
+                        onStartDragObstacle(hit.obstacleId)
                     },
                     onDrag = { change, _ ->
                         if (uiState.editMode != MapEditMode.DragObstacle) return@detectDragGestures
@@ -216,7 +216,7 @@ fun GridMapCanvas(
                 size = rect.size
             )
 
-            val stripe = faceStripe(rect, obs.face)
+            val stripe = faceStripe(rect, obs.faceDir)
             drawRect(
                 color = Color(0xFF5E35B1),
                 topLeft = stripe.topLeft,
@@ -233,9 +233,9 @@ fun GridMapCanvas(
                 val cy = rect.center.y
 
                 paint.color = android.graphics.Color.BLACK
-                drawText("O${obs.no}", cx, cy - textSizePx * 0.1f, paint)
+                drawText("O${obs.obstacleId}", cx, cy - textSizePx * 0.1f, paint)
 
-                obs.targetId?.let {
+                obs.displayedTargetId?.let {
                     paint.color = android.graphics.Color.DKGRAY
                     drawText("T$it", cx, cy + textSizePx * 1.0f, paint)
                 }
@@ -243,7 +243,7 @@ fun GridMapCanvas(
         }
 
         // ---- Robot ----
-        uiState.robotPose?.let { pose ->
+        uiState.robotPosition?.let { pose ->
             val rect = cellRect(pose.x, pose.y, cellSize, grid, gridLeft, gridTop)
             drawRect(
                 color = Color(0xFF80CBC4),
@@ -253,7 +253,7 @@ fun GridMapCanvas(
 
             val center = rect.center
             val d = cellSize * 0.25f
-            val marker = when (pose.dir) {
+            val marker = when (pose.faceDir) {
                 FaceDir.UP -> Offset(center.x, center.y - d)
                 FaceDir.DOWN -> Offset(center.x, center.y + d)
                 FaceDir.LEFT -> Offset(center.x - d, center.y)

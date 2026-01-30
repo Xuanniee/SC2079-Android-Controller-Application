@@ -1,3 +1,4 @@
+// BluetoothChatScreen.kt
 package com.sc2079.androidcontroller.features.bluetooth.ui
 
 import androidx.compose.foundation.layout.*
@@ -18,32 +19,22 @@ fun BluetoothChatScreen(
     var input by remember { mutableStateOf("") }
 
     Column(
-        Modifier.fillMaxSize().padding(16.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = onBack
-            ) {
-                Text("Back")
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = onBack) { Text("Back") }
 
             Spacer(Modifier.weight(1f))
 
-            OutlinedButton(
-                onClick = { bluetoothViewModel.disconnect() }
-            ) {
+            OutlinedButton(onClick = { bluetoothViewModel.disconnect() }) {
                 Text("Disconnect")
             }
         }
 
         Spacer(Modifier.height(12.dp))
-        Text(
-            "Chat",
-            style = MaterialTheme.typography.titleLarge
-        )
-
+        Text("Chat", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(12.dp))
 
         LazyColumn(
@@ -60,9 +51,7 @@ fun BluetoothChatScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(
                 value = input,
                 onValueChange = { input = it },

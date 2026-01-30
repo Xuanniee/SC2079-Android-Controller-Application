@@ -73,7 +73,7 @@ fun MappingHomeScreen(
     )
 
     if (obstacleNo != null) {
-        val current = uiState.obstacles.firstOrNull { it.no == obstacleNo }?.face ?: FaceDir.UP
+        val current = uiState.obstacles.firstOrNull { it.obstacleId == obstacleNo }?.faceDir ?: FaceDir.UP
         DirectionPickerDialog(
             title = "Obstacle $obstacleNo face",
             initial = current,
