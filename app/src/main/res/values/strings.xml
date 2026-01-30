@@ -51,4 +51,6 @@
     <string name="changing_language">Changing language…</string>
     <string name="error_title">Something went wrong</string>
     <string name="error_message">An unexpected error occurred. Please try again.</string>
+    <string name="map">Map</string>
+    <string name="obstacle_robot_placement"><![CDATA[Obstacle & Robot Placement]]></string>
 </resources>

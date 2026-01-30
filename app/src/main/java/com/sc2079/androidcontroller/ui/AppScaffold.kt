@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.sc2079.androidcontroller.R
+import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.language.presentation.AppLanguage
 import com.sc2079.androidcontroller.features.language.presentation.LocaleState
 import com.sc2079.androidcontroller.navigation.NavGraph
@@ -86,6 +88,7 @@ data class NavigationItem(
 @Composable
 fun AppScaffold(
     navController: NavHostController,
+    bluetoothViewModel: BluetoothViewModel,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -106,7 +109,13 @@ fun AppScaffold(
             icon = Icons.Default.Bluetooth,
             screen = Screen.Bluetooth,
             descriptionResId = R.string.bluetooth_connect_message
-        )
+        ),
+        NavigationItem(
+            titleResId = R.string.map,
+            icon = Icons.Default.Map,
+            screen = Screen.Map,
+            descriptionResId = R.string.obstacle_robot_placement
+        ),
     )
     
     // Get current screen title
@@ -264,7 +273,8 @@ fun AppScaffold(
         ) { paddingValues ->
             NavGraph(
                 navController = navController,
-                modifier = Modifier.padding(paddingValues)
+                modifier = Modifier.padding(paddingValues),
+                bluetoothViewModel = bluetoothViewModel
             )
         }
     }
