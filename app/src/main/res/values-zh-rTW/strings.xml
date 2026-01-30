@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SC2079 控制器</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">主頁</string>
+    <string name="nav_bluetooth">藍牙</string>
+    <string name="nav_navigation">導航</string>
+    <string name="nav_theme">主題</string>
+    <string name="nav_language">語言</string>
+    
+    <!-- Language -->
+    <string name="lang_system">系統</string>
+    <string name="lang_english">EN</string>
+    <string name="lang_chinese_simplified">简</string>
+    <string name="lang_chinese_traditional">繁</string>
+    
+    <!-- Theme -->
+    <string name="theme_light">淺色</string>
+    <string name="theme_dark">深色</string>
+    <string name="theme_contrast">高對比</string>
+    
+    <!-- Home Screen -->
+    <string name="device_connected">裝置名稱：已連線</string>
+    <string name="device_disconnected">裝置：未連線</string>
+    <string name="controls">控制</string>
+    <string name="activity_status">活動狀態</string>
+    <string name="status_subhead">副標題</string>
+    <string name="action">操作</string>
+    
+    <!-- Bluetooth Screen -->
+    <string name="bluetooth_title">藍牙</string>
+    <string name="bluetooth_screen">藍牙介面</string>
+    <string name="bluetooth_connect_message">連接到您的機器人裝置</string>
+    <string name="bluetooth_scan">掃描</string>
+    <string name="bluetooth_no_devices">未找到裝置</string>
+    <string name="bluetooth_device_address">地址：%1$s</string>
+    <string name="bluetooth_device_rssi">訊號：%1$d dBm</string>
+    <string name="bluetooth_connect">連接</string>
+    
+    <!-- Map -->
+    <string name="map_arena">場地地圖</string>
+    <string name="map_tap_to_select">點擊單元格選擇</string>
+    <string name="map_selected">已選擇：第 %1$d 行，第 %2$d 列</string>
+    
+    <!-- Common -->
+    <string name="menu">選單</string>
+    <string name="back">返回</string>
+    <string name="retry">重試</string>
+    <string name="loading">載入中…</string>
+    <string name="error_title">發生錯誤</string>
+    <string name="error_message">發生意外錯誤，請重試。</string>
+</resources>
+

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SC2079 控制器</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">主页</string>
+    <string name="nav_bluetooth">蓝牙</string>
+    <string name="nav_navigation">导航</string>
+    <string name="nav_theme">主题</string>
+    <string name="nav_language">语言</string>
+    
+    <!-- Language -->
+    <string name="lang_system">系统</string>
+    <string name="lang_english">EN</string>
+    <string name="lang_chinese_simplified">简</string>
+    <string name="lang_chinese_traditional">繁</string>
+    
+    <!-- Theme -->
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+    <string name="theme_contrast">高对比</string>
+    
+    <!-- Home Screen -->
+    <string name="device_connected">设备名称：已连接</string>
+    <string name="device_disconnected">设备：未连接</string>
+    <string name="controls">控制</string>
+    <string name="activity_status">活动状态</string>
+    <string name="status_subhead">副标题</string>
+    <string name="action">操作</string>
+    
+    <!-- Bluetooth Screen -->
+    <string name="bluetooth_title">蓝牙</string>
+    <string name="bluetooth_screen">蓝牙界面</string>
+    <string name="bluetooth_connect_message">连接到您的机器人设备</string>
+    <string name="bluetooth_scan">扫描</string>
+    <string name="bluetooth_no_devices">未找到设备</string>
+    <string name="bluetooth_device_address">地址：%1$s</string>
+    <string name="bluetooth_device_rssi">信号：%1$d dBm</string>
+    <string name="bluetooth_connect">连接</string>
+    
+    <!-- Map -->
+    <string name="map_arena">场地地图</string>
+    <string name="map_tap_to_select">点击单元格选择</string>
+    <string name="map_selected">已选择：第 %1$d 行，第 %2$d 列</string>
+    
+    <!-- Common -->
+    <string name="menu">菜单</string>
+    <string name="back">返回</string>
+    <string name="retry">重试</string>
+    <string name="loading">加载中…</string>
+    <string name="changing_language">正在更改语言…</string>
+    <string name="error_title">出现错误</string>
+    <string name="error_message">发生意外错误，请重试。</string>
+</resources>
+
