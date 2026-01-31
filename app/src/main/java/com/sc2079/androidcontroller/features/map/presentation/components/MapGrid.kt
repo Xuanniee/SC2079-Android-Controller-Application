@@ -13,12 +13,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -138,10 +138,10 @@ private fun MapBox(
         confirmedState = cellState.isConfirmed
     }
     
-    // Handle flash animation timeout
+    // Handle flash animation timeout - changed to 10 seconds for auto-cancel
     LaunchedEffect(showFlashAnimation) {
         if (showFlashAnimation && !confirmedState) {
-            delay(2000)
+            delay(10000) // 10 seconds
             showFlashAnimation = false
         }
     }
@@ -186,15 +186,20 @@ private fun MapBox(
     
     Box(
         modifier = modifier
-            .aspectRatio(1f)
-            .clip(shape)
-            .background(backgroundColor, shape)
-            .border(
-                width = if (showRedBorder) 2.dp else 0.5.dp,
-                color = borderColor,
-                shape = shape
-            )
-            .pointerInput(cellState.position) {
+            .wrapContentSize()
+    ) {
+        // Map box cell
+        Box(
+            modifier = Modifier
+                .aspectRatio(1f)
+                .clip(shape)
+                .background(backgroundColor, shape)
+                .border(
+                    width = if (showRedBorder) 2.dp else 0.5.dp,
+                    color = borderColor,
+                    shape = shape
+                )
+                .pointerInput(cellState.position) {
                 detectTapGestures(
                     onTap = {
                         // Handle single tap, double tap, or triple tap
@@ -211,8 +216,10 @@ private fun MapBox(
                         
                         when (tapCount) {
                             1 -> {
-                                // Single tap - just show flash animation (not confirmed)
-                                showFlashAnimation = true
+                                // Single tap - show flash animation
+                                if (!confirmedState) {
+                                    showFlashAnimation = true
+                                }
                                 onClick()
                             }
                             2 -> {
@@ -266,20 +273,21 @@ private fun MapBox(
                     }
                 )
             }
-    ) {
-        // Draw flashing red radius animation
-        if (showFlashAnimation && !confirmedState) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                val center = Offset(size.width / 2, size.height / 2)
-                val maxRadius = size.minDimension / 2
-                val animatedRadius = maxRadius * flashAnimation
-                
-                // Draw with higher alpha for better visibility
-                drawCircle(
-                    color = Color.Red.copy(alpha = 0.5f * flashAnimation),
-                    radius = animatedRadius,
-                    center = center
-                )
+        ) {
+            // Draw flashing red radius animation
+            if (showFlashAnimation && !confirmedState) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2, size.height / 2)
+                    val maxRadius = size.minDimension / 2
+                    val animatedRadius = maxRadius * flashAnimation
+                    
+                    // Draw with higher alpha for better visibility
+                    drawCircle(
+                        color = Color.Red.copy(alpha = 0.5f * flashAnimation),
+                        radius = animatedRadius,
+                        center = center
+                    )
+                }
             }
         }
     }
