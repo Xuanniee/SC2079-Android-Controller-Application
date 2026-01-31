@@ -8,11 +8,11 @@ val White = Color(0xFFFFFFFF)
 
 // Secondary: oklch(92.9% 0.013 255.508) - Very light blue-gray
 // Approximate RGB conversion: #EDEDF0
-val LightSecondary = Color(0xFFEDEDF0)
+val LightSecondary = Color(0xFFf1f5f9)
 
 // Tertiary: oklch(86.9% 0.022 252.894) - Light blue-gray
 // Approximate RGB conversion: #DEDEE5
-val LightTertiary = Color(0xFFDEDEE5)
+val LightTertiary = Color(0xFFe2e8f0)
 
 // Text: oklch(27.9% 0.041 260.031) - Dark blue-gray
 // Approximate RGB conversion: #3D3D4A
@@ -52,7 +52,7 @@ val DarkPrimary = Color(0xFF3D3F4A)
 
 // Dark Mode Secondary: oklch(55.4% 0.046 257.417) - Medium blue-gray
 // Approximate RGB conversion: #6B6D7D
-val DarkSecondary = Color(0xFF6B6D7D)
+val DarkSecondary = Color(0xFF1e293b)
 
 // Dark Mode Tertiary: oklch(70.4% 0.04 256.788) - Lighter blue-gray
 // Approximate RGB conversion: #9A9CA8

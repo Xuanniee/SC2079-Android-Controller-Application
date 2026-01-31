@@ -1,27 +1,36 @@
 package com.sc2079.androidcontroller.features.map.presentation.components
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.sc2079.androidcontroller.ui.theme.CustomSuccess
 import com.sc2079.androidcontroller.ui.theme.SC2079AndroidControllerApplicationTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Data class representing a position in the grid
@@ -37,6 +46,7 @@ data class GridPosition(
 data class CellState(
     val position: GridPosition,
     val isSelected: Boolean = false,
+    val isConfirmed: Boolean = false,
     val cellType: CellType = CellType.EMPTY
 )
 
@@ -86,7 +96,7 @@ fun MapGrid(
                     val position = GridPosition(row, column)
                     val cellState = cellStates[position] ?: CellState(position)
                     
-                    GridCell(
+                    MapBox(
                         cellState = cellState,
                         onClick = { onCellClick(position) },
                         modifier = Modifier.weight(1f)
@@ -98,10 +108,12 @@ fun MapGrid(
 }
 
 /**
- * Individual grid cell component with rounded corners
+ * MapBox component with animation support
+ * - Single tap: Shows red flashing radius animation
+ * - Long press (3+ seconds): Becomes confirmed state, red border disappears
  */
 @Composable
-private fun GridCell(
+private fun MapBox(
     cellState: CellState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -109,15 +121,68 @@ private fun GridCell(
     val cornerRadius = 4.dp
     val shape = RoundedCornerShape(cornerRadius)
     
+    // Animation state for flashing red radius
+    var showFlashAnimation by remember { mutableStateOf(false) }
+    var isLongPressing by remember { mutableStateOf(false) }
+    var confirmedState by remember(cellState.position) { 
+        mutableStateOf(cellState.isConfirmed) 
+    }
+    
+    // Tap detection for double and triple taps
+    var lastTapTime by remember { mutableStateOf(0L) }
+    var tapCount by remember { mutableStateOf(0) }
+    val tapTimeout = 300L // 300ms window for tap sequences
+    
+    // Update confirmed state when cellState changes
+    LaunchedEffect(cellState.isConfirmed) {
+        confirmedState = cellState.isConfirmed
+    }
+    
+    // Handle flash animation timeout
+    LaunchedEffect(showFlashAnimation) {
+        if (showFlashAnimation && !confirmedState) {
+            delay(2000)
+            showFlashAnimation = false
+        }
+    }
+    
+    // Handle long press reset - wait 3 seconds
+    LaunchedEffect(isLongPressing) {
+        if (isLongPressing) {
+            delay(3000) // 3 seconds
+            // If still pressing after 3 seconds, reset the state
+            if (isLongPressing) {
+                confirmedState = false
+                showFlashAnimation = false
+                isLongPressing = false
+            }
+        }
+    }
+    
+    // Flashing animation
+    val flashAnimation by animateFloatAsState(
+        targetValue = if (showFlashAnimation && !confirmedState) 1f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "flash"
+    )
+    
     val backgroundColor = when {
+        confirmedState -> CustomSuccess // Green background when confirmed
         cellState.isSelected -> MaterialTheme.colorScheme.primaryContainer
         else -> getCellColor(cellState.cellType)
     }
     
+    // Red border only shows when not confirmed and (selected or flashing)
+    val showRedBorder = !confirmedState && (cellState.isSelected || showFlashAnimation)
     val borderColor = when {
-        cellState.isSelected -> MaterialTheme.colorScheme.primary
+        showRedBorder -> Color.Red
         else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
     }
+    
+    val density = LocalDensity.current
     
     Box(
         modifier = modifier
@@ -125,12 +190,99 @@ private fun GridCell(
             .clip(shape)
             .background(backgroundColor, shape)
             .border(
-                width = if (cellState.isSelected) 2.dp else 0.5.dp,
+                width = if (showRedBorder) 2.dp else 0.5.dp,
                 color = borderColor,
                 shape = shape
             )
-            .clickable { onClick() }
-    )
+            .pointerInput(cellState.position) {
+                detectTapGestures(
+                    onTap = {
+                        // Handle single tap, double tap, or triple tap
+                        val currentTime = System.currentTimeMillis()
+                        val timeSinceLastTap = currentTime - lastTapTime
+                        
+                        if (timeSinceLastTap < tapTimeout) {
+                            // Tap within timeout window - increment count
+                            tapCount++
+                        } else {
+                            // New tap sequence - reset count
+                            tapCount = 1
+                        }
+                        
+                        when (tapCount) {
+                            1 -> {
+                                // Single tap - just show flash animation (not confirmed)
+                                showFlashAnimation = true
+                                onClick()
+                            }
+                            2 -> {
+                                // Double tap - confirm the state
+                                confirmedState = true
+                                showFlashAnimation = false
+                                onClick()
+                            }
+                            3 -> {
+                                // Triple tap - reset the state
+                                confirmedState = false
+                                showFlashAnimation = false
+                                tapCount = 0 // Reset count after triple tap
+                                onClick()
+                            }
+                        }
+                        
+                        lastTapTime = currentTime
+                    },
+                    onPress = {
+                        // Start long press detection
+                        // First, trigger flash animation for immediate feedback
+                        showFlashAnimation = true
+                        
+                        // Wait a short time to distinguish tap from long press
+                        val isQuickTap = withTimeoutOrNull(150) {
+                            tryAwaitRelease()
+                            true
+                        } == true
+                        
+                        if (isQuickTap) {
+                            // It was a quick tap, flash animation already started
+                            // Don't call onClick here as onTap will handle it
+                        } else {
+                            // It's a long press - start long press detection
+                            isLongPressing = true
+                            // Use withTimeoutOrNull to check if 3 seconds pass before release
+                            val result = withTimeoutOrNull(3000) {
+                                tryAwaitRelease()
+                            }
+                            // If result is null, timeout occurred (3 seconds passed while still pressing)
+                            // Reset the state immediately
+                            if (result == null) {
+                                // 3 seconds passed while still pressing - reset the state
+                                confirmedState = false
+                                showFlashAnimation = false
+                            }
+                            // Reset long pressing flag
+                            isLongPressing = false
+                        }
+                    }
+                )
+            }
+    ) {
+        // Draw flashing red radius animation
+        if (showFlashAnimation && !confirmedState) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val center = Offset(size.width / 2, size.height / 2)
+                val maxRadius = size.minDimension / 2
+                val animatedRadius = maxRadius * flashAnimation
+                
+                // Draw with higher alpha for better visibility
+                drawCircle(
+                    color = Color.Red.copy(alpha = 0.5f * flashAnimation),
+                    radius = animatedRadius,
+                    center = center
+                )
+            }
+        }
+    }
 }
 
 /**

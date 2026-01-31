@@ -5,13 +5,25 @@ import android.bluetooth.BluetoothDevice
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
@@ -74,72 +86,80 @@ fun BluetoothSetupScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // All buttons in one row with squarish shape, rounded 16.dp borders, secondary background, and icons
         Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(
-                onClick = { bluetoothViewModel.retrievePairedDevices() }
-            ) {
-                Text("Load Paired")
-            }
-            if (!bluetoothUiState.isScanning) {
-                Button(
-                    onClick = { bluetoothViewModel.startBluetoothScan() }
-                ) {
-                    Text("Scan")
-                }
-            } else {
-                OutlinedButton(
-                    onClick = { bluetoothViewModel.stopBluetoothScan() }
-                ) {
-                    Text("Stop Scan")
-                }
-            }
-        }
+            // Load Paired button
+            BluetoothActionButton(
+                onClick = { bluetoothViewModel.retrievePairedDevices() },
+                icon = Icons.Default.Refresh,
+                label = "Load Paired",
+                modifier = Modifier.weight(1f)
+            )
 
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
+            // Scan / Stop Scan button with smooth transitions
+            val isScanningActive = bluetoothUiState.isScanning
+            BluetoothActionButton(
                 onClick = {
-                    bluetoothViewModel.hostBluetoothServer() }
-            ) {
-                Text("Host (Server)")
-            }
+                    if (isScanningActive) {
+                        bluetoothViewModel.stopBluetoothScan()
+                    } else {
+                        bluetoothViewModel.startBluetoothScan()
+                    }
+                },
+                icon = if (isScanningActive) Icons.Default.Cancel else Icons.Default.Search,
+                label = if (isScanningActive) "Stop Scan" else "Scan",
+                backgroundColor = if (isScanningActive) MaterialTheme.colorScheme.tertiaryContainer 
+                                  else MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.weight(1f)
+            )
 
-            OutlinedButton(
+            // Host (Server) button
+            val isHostingActive = bluetoothUiState.bluetoothConnState is BluetoothConnState.Listening
+            BluetoothActionButton(
+                onClick = { bluetoothViewModel.hostBluetoothServer() },
+                icon = Icons.Default.Settings,
+                label = "Host",
+                backgroundColor = if (isHostingActive) MaterialTheme.colorScheme.tertiaryContainer 
+                                  else MaterialTheme.colorScheme.secondaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+
+            // Make Discoverable button
+            BluetoothActionButton(
                 onClick = {
                     val intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
                         putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
                     }
                     deviceDiscoverableLauncher.launch(intent)
-                }
-            ) {
-                Text("Make Discoverable")
-            }
-        }
+                },
+                icon = Icons.Default.Visibility,
+                label = "Discoverable",
+                modifier = Modifier.weight(1f)
+            )
 
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
+            // Connect button
+            BluetoothActionButton(
                 onClick = { bluetoothViewModel.connectSelectedDevice() },
-                enabled = bluetoothUiState.selectedDeviceAddress != null
-            ) {
-                Text("Connect")
-            }
+                icon = Icons.Default.Link,
+                label = "Connect",
+                enabled = bluetoothUiState.selectedDeviceAddress != null,
+                modifier = Modifier.weight(1f)
+            )
 
-            OutlinedButton(
-                onClick = {
-                    bluetoothViewModel.disconnect()
-                }
-            ) {
-                Text("Disconnect")
-            }
+            // Disconnect button (red background when not disconnected, disabled when disconnected)
+            val isDisconnected = bluetoothUiState.bluetoothConnState is BluetoothConnState.Disconnected
+            BluetoothActionButton(
+                onClick = { bluetoothViewModel.disconnect() },
+                icon = Icons.Default.Close,
+                label = "Disconnect",
+                enabled = !isDisconnected,
+                backgroundColor = if (isDisconnected) MaterialTheme.colorScheme.secondaryContainer 
+                                  else MaterialTheme.colorScheme.error,
+                modifier = Modifier.weight(1f)
+            )
         }
 
         Spacer(Modifier.height(12.dp))
@@ -177,6 +197,82 @@ fun BluetoothSetupScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Open Chat")
+        }
+    }
+}
+
+/**
+ * Custom Bluetooth action button with squarish shape, rounded corners, secondary background, and icon
+ * Includes fade-in animations for UI changes
+ */
+@Composable
+private fun BluetoothActionButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean = true,
+    backgroundColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    modifier: Modifier = Modifier
+) {
+    // Animate background color changes with fade-in effect
+    val animatedBackgroundColor by animateColorAsState(
+        targetValue = if (enabled) backgroundColor else backgroundColor.copy(alpha = 0.5f),
+        animationSpec = tween(durationMillis = 300),
+        label = "backgroundColor"
+    )
+    
+    val isErrorColor = backgroundColor == MaterialTheme.colorScheme.error
+    val isTertiaryColor = backgroundColor == MaterialTheme.colorScheme.tertiaryContainer
+    val targetContentColor = when {
+        isErrorColor -> MaterialTheme.colorScheme.onError
+        isTertiaryColor -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    
+    // Animate content color changes with fade-in effect
+    val animatedContentColor by animateColorAsState(
+        targetValue = if (enabled) targetContentColor else targetContentColor.copy(alpha = 0.5f),
+        animationSpec = tween(durationMillis = 300),
+        label = "contentColor"
+    )
+    
+    // Animate opacity for fade-in effect
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.5f,
+        animationSpec = tween(durationMillis = 300),
+        label = "alpha"
+    )
+    
+    Box(
+        modifier = modifier
+            .height(64.dp)
+            .alpha(animatedAlpha)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                animatedBackgroundColor,
+                RoundedCornerShape(16.dp)
+            )
+            .clickable(enabled = enabled) { onClick() }
+            .padding(8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(24.dp),
+                tint = animatedContentColor
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = animatedContentColor
+            )
         }
     }
 }
