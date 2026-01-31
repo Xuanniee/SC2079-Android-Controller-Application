@@ -3,6 +3,7 @@ package com.sc2079.androidcontroller.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Contrast
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LegendToggle
 import androidx.compose.material.icons.filled.LightMode
@@ -304,7 +306,8 @@ fun AppScaffold(
                     showBottomSheet = false
                 },
                 modifier = Modifier.fillMaxWidth(),
-                sheetState = sheetState
+                sheetState = sheetState,
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
                 UserGuideContent(
                     currentRoute = currentRoute,
@@ -358,20 +361,24 @@ private fun UserGuideContent(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp)
+            .padding(32.dp)
     ) {
         // Header with TTS button and close button
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Box(
+            modifier = Modifier.fillMaxWidth()
         ) {
+            // Centered title
             Text(
                 text = "User Guide",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.Center),
+                textAlign = TextAlign.Center
             )
-            Row {
+            // Buttons on the right
+            Row(
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
                 // TTS Button - shows Stop icon when speaking
                 IconButton(
                     onClick = {

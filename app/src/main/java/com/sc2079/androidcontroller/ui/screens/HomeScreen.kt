@@ -1,6 +1,7 @@
 package com.sc2079.androidcontroller.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -16,17 +18,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.OpenWith
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -38,15 +45,27 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -56,13 +75,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.sc2079.androidcontroller.R
+import com.sc2079.androidcontroller.features.map.data.local.MapPreferencesDataSource
+import com.sc2079.androidcontroller.features.map.data.repository.MapRepositoryImpl
 import com.sc2079.androidcontroller.features.map.domain.model.MapEditMode
+import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
+import com.sc2079.androidcontroller.features.map.presentation.MapViewModelFactory
 import com.sc2079.androidcontroller.features.map.presentation.components.CellState
 import com.sc2079.androidcontroller.features.map.presentation.components.CellType
 import com.sc2079.androidcontroller.features.map.presentation.components.GridPosition
@@ -91,26 +117,60 @@ enum class Direction {
 fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
-    var cellStates by remember { mutableStateOf<Map<GridPosition, CellState>>(emptyMap()) }
-    var lastClickedPosition by remember { mutableStateOf<GridPosition?>(null) }
+    // Initialize MapViewModel
+    val context = LocalContext.current
+    val mapRepository = remember { MapRepositoryImpl(MapPreferencesDataSource(context.applicationContext)) }
+    val mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory(mapRepository))
+    val mapUiState by mapViewModel.uiState.collectAsState()
+    
+    // Convert MapUiState to CellState map
+    val cellStates = remember(mapUiState.obstacles, mapUiState.robotPosition) {
+        val states = mutableMapOf<GridPosition, CellState>()
+        // Add obstacles
+        mapUiState.obstacles.forEach { obstacle ->
+            val position = GridPosition(obstacle.y, obstacle.x) // y=row, x=column
+            states[position] = CellState(
+                position = position,
+                cellType = CellType.OBSTACLE,
+                obstacleId = obstacle.obstacleId,
+                obstacleFaceDir = obstacle.faceDir,
+                displayedTargetId = obstacle.displayedTargetId
+            )
+        }
+        // Add robot position
+        mapUiState.robotPosition?.let { robot ->
+            val position = GridPosition(robot.y, robot.x) // y=row, x=column
+            states[position] = CellState(
+                position = position,
+                cellType = CellType.ROBOT,
+                robotFaceDir = robot.faceDir
+            )
+        }
+        states.toMap()
+    }
     
     // Map mode dropdown state
     var expanded by remember { mutableStateOf(false) }
-    var selectedMode by remember { mutableStateOf(MapEditMode.Cursor) }
+    val selectedMode = mapUiState.editMode
     
     // Save map dialog state
     var showSaveDialog by remember { mutableStateOf(false) }
     var saveName by remember { mutableStateOf("map1") }
     
+    // Load map dialog state
+    var showLoadDialog by remember { mutableStateOf(false) }
+    var selectedMapName by remember { mutableStateOf<String?>(null) }
+    
+    
     // Reset map confirmation dialog state
     var showResetDialog by remember { mutableStateOf(false) }
-    
-    // Saved maps list (placeholder - can be connected to actual state later)
-    var savedMaps by remember { mutableStateOf<List<String>>(emptyList()) }
     
     // Snackbar state
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    
+    // State to trigger chip splash effect when a cell is tapped
+    var chipSplashTrigger by remember { mutableStateOf(0) }
     
     BoxWithConstraints(
         modifier = modifier
@@ -134,23 +194,33 @@ fun HomeScreen(
                     MapCard(
                         cellStates = cellStates,
                         onCellClick = { position ->
-                            lastClickedPosition = position
-                            val currentState = cellStates[position]
-                            val newStates = cellStates.toMutableMap()
+                            // Convert GridPosition (row, column) to (x, y) for MapViewModel
+                            // GridPosition(row, column) -> (x=column, y=row)
+                            val x = position.column
+                            val y = position.row
+                            mapViewModel.onTapCell(x, y)
                             
-                            newStates.keys.forEach { key ->
-                                newStates[key]?.let { state ->
-                                    newStates[key] = state.copy(isSelected = false)
-                                }
+                            // Trigger chip splash effect
+                            chipSplashTrigger++
+                        },
+                        onCellRemove = { position ->
+                            // Convert GridPosition (row, column) to (x, y) for MapViewModel
+                            // GridPosition(row, column) -> (x=column, y=row)
+                            val x = position.column
+                            val y = position.row
+                            
+                            // Remove obstacle at this position if any
+                            val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
+                            obstacle?.let {
+                                mapViewModel.removeObstacleByNo(it.obstacleId)
                             }
                             
-                            newStates[position] = CellState(
-                                position = position,
-                                isSelected = true,
-                                cellType = currentState?.cellType ?: CellType.EMPTY
-                            )
-                            
-                            cellStates = newStates
+                            // Remove robot if at this position
+                            mapUiState.robotPosition?.let { robot ->
+                                if (robot.x == x && robot.y == y) {
+                                    mapViewModel.clearRobotPosition()
+                                }
+                            }
                         }
                     )
                 }
@@ -169,15 +239,14 @@ fun HomeScreen(
                             expanded = expanded,
                             onExpandedChange = { expanded = it },
                             selectedMode = selectedMode,
-                            onModeSelected = { selectedMode = it },
+                            onModeSelected = { mapViewModel.setEditMode(it) },
                             onReset = { 
                                 // Show confirmation dialog
                                 showResetDialog = true
                             },
                             onSave = { showSaveDialog = true },
-                            savedMaps = savedMaps,
-                            onLoadMap = { /* Handle load */ },
-                            onDeleteMap = { /* Handle delete */ }
+                            onLoad = { showLoadDialog = true },
+                            chipSplashTrigger = chipSplashTrigger
                         )
                         
                         // Controls Card
@@ -199,23 +268,33 @@ fun HomeScreen(
                     MapCard(
                         cellStates = cellStates,
                         onCellClick = { position ->
-                            lastClickedPosition = position
-                            val currentState = cellStates[position]
-                            val newStates = cellStates.toMutableMap()
+                            // Convert GridPosition (row, column) to (x, y) for MapViewModel
+                            // GridPosition(row, column) -> (x=column, y=row)
+                            val x = position.column
+                            val y = position.row
+                            mapViewModel.onTapCell(x, y)
                             
-                            newStates.keys.forEach { key ->
-                                newStates[key]?.let { state ->
-                                    newStates[key] = state.copy(isSelected = false)
-                                }
+                            // Trigger chip splash effect
+                            chipSplashTrigger++
+                        },
+                        onCellRemove = { position ->
+                            // Convert GridPosition (row, column) to (x, y) for MapViewModel
+                            // GridPosition(row, column) -> (x=column, y=row)
+                            val x = position.column
+                            val y = position.row
+                            
+                            // Remove obstacle at this position if any
+                            val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
+                            obstacle?.let {
+                                mapViewModel.removeObstacleByNo(it.obstacleId)
                             }
                             
-                            newStates[position] = CellState(
-                                position = position,
-                                isSelected = true,
-                                cellType = currentState?.cellType ?: CellType.EMPTY
-                            )
-                            
-                            cellStates = newStates
+                            // Remove robot if at this position
+                            mapUiState.robotPosition?.let { robot ->
+                                if (robot.x == x && robot.y == y) {
+                                    mapViewModel.clearRobotPosition()
+                                }
+                            }
                         }
                     )
                 }
@@ -230,15 +309,14 @@ fun HomeScreen(
                             expanded = expanded,
                             onExpandedChange = { expanded = it },
                             selectedMode = selectedMode,
-                            onModeSelected = { selectedMode = it },
+                            onModeSelected = { mapViewModel.setEditMode(it) },
                             onReset = { 
                                 // Show confirmation dialog
                                 showResetDialog = true
                             },
                             onSave = { showSaveDialog = true },
-                            savedMaps = savedMaps,
-                            onLoadMap = { /* Handle load */ },
-                            onDeleteMap = { /* Handle delete */ }
+                            onLoad = { showLoadDialog = true },
+                            chipSplashTrigger = chipSplashTrigger
                         )
                         
                         // Controls Card
@@ -248,7 +326,7 @@ fun HomeScreen(
             }
         }
         
-        // Snackbar Host
+        // Snackbar Host (bottom) - for success messages
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
@@ -260,6 +338,7 @@ fun HomeScreen(
                 shape = RoundedCornerShape(16.dp) // Increased border radius by 4dp (from default 4dp to 8dp)
             )
         }
+        
     }
     
     // Save Map Dialog
@@ -275,7 +354,7 @@ fun HomeScreen(
             },
             text = {
                 Column {
-                    OutlinedTextField(
+                    TextField(
                         value = saveName,
                         onValueChange = { saveName = it },
                         label = { Text("Name") },
@@ -292,26 +371,148 @@ fun HomeScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    // Handle save - can be connected to actual save functionality
-                    showSaveDialog = false
-                    // Show snackbar for save
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar("Map has been saved")
-                    }
-                }) { 
-                    Text(
-                        "Save",
-                        color = MaterialTheme.colorScheme.primary
+                Button(
+                    onClick = {
+                        mapViewModel.saveCurrentMap(saveName)
+                        showSaveDialog = false
+                        // Show snackbar for save
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Map '$saveName' has been saved")
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary
                     )
+                ) { 
+                    Text("Save")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) { 
+                Button(
+                    onClick = { showSaveDialog = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary
+                    )
+                ) { 
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Load Map Dialog
+    if (showLoadDialog) {
+        AlertDialog(
+            onDismissRequest = { 
+                showLoadDialog = false
+                selectedMapName = null
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { 
+                Text(
+                    "Load Map",
+                    color = MaterialTheme.colorScheme.onSurface
+                ) 
+            },
+            text = {
+                if (mapUiState.savedMaps.isEmpty()) {
                     Text(
-                        "Cancel",
+                        "No saved maps available.",
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        mapUiState.savedMaps.forEach { mapName ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedMapName = mapName },
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    modifier = Modifier.weight(1f),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    RadioButton(
+                                        selected = selectedMapName == mapName,
+                                        onClick = { selectedMapName = mapName },
+                                        colors = RadioButtonDefaults.colors(
+                                            selectedColor = MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                    Text(
+                                        text = mapName,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                Button(
+                                    onClick = {
+                                        mapViewModel.deleteMap(mapName)
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Map '$mapName' has been deleted")
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = "Delete",
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        selectedMapName?.let { name ->
+                            mapViewModel.loadMap(name)
+                            showLoadDialog = false
+                            selectedMapName = null
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Map '$name' has been loaded")
+                            }
+                        }
+                    },
+                    enabled = selectedMapName != null,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary,
+                        disabledContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
+                        disabledContentColor = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.5f)
+                    )
+                ) { 
+                    Text("Load")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { 
+                        showLoadDialog = false
+                        selectedMapName = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary
+                    )
+                ) { 
+                    Text("Cancel")
                 }
             }
         )
@@ -336,7 +537,7 @@ fun HomeScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    // Handle reset
+                    mapViewModel.resetAll()
                     showResetDialog = false
                     // Show snackbar for reset
                     coroutineScope.launch {
@@ -354,7 +555,7 @@ fun HomeScreen(
                     Text(
                         "Cancel",
                         color = MaterialTheme.colorScheme.onSurface
-                    ) 
+                    )
                 }
             }
         )
@@ -368,6 +569,7 @@ fun HomeScreen(
 private fun MapCard(
     cellStates: Map<GridPosition, CellState>,
     onCellClick: (GridPosition) -> Unit,
+    onCellRemove: (GridPosition) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -381,7 +583,8 @@ private fun MapCard(
         MapGrid(
             modifier = Modifier.fillMaxSize(),
             cellStates = cellStates,
-            onCellClick = onCellClick
+            onCellClick = onCellClick,
+            onCellRemove = onCellRemove
         )
     }
 }
@@ -571,9 +774,8 @@ private fun MapActionsCard(
     onModeSelected: (MapEditMode) -> Unit,
     onReset: () -> Unit,
     onSave: () -> Unit,
-    savedMaps: List<String>,
-    onLoadMap: (String) -> Unit,
-    onDeleteMap: (String) -> Unit,
+    onLoad: () -> Unit,
+    chipSplashTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
     val modeItems = remember {
@@ -599,29 +801,27 @@ private fun MapActionsCard(
             modifier = Modifier.padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            // Confirmation Chip - always shown with splash effect
+            ChipWithSplash(
+                chipSplashTrigger = chipSplashTrigger,
+                modifier = Modifier.fillMaxWidth()
+            )
+            
             // Map Mode Dropdown
             ExposedDropdownMenuBox(
                 expanded = expanded,
                 onExpandedChange = onExpandedChange
             ) {
-                // Determine background color based on selected mode
-                val backgroundColor = when (selectedMode) {
-                    MapEditMode.Cursor -> MaterialTheme.colorScheme.primaryContainer
-                    MapEditMode.SetStart -> MaterialTheme.colorScheme.secondaryContainer
-                    else -> Color.Transparent
-                }
+                // Use secondary background color
+                val backgroundColor = MaterialTheme.colorScheme.secondaryContainer
+                val contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 
-                val contentColor = when (selectedMode) {
-                    MapEditMode.Cursor -> MaterialTheme.colorScheme.onPrimaryContainer
-                    MapEditMode.SetStart -> MaterialTheme.colorScheme.onSecondaryContainer
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-                
-                OutlinedTextField(
+                TextField(
                     modifier = Modifier
                         .menuAnchor()
                         .fillMaxWidth()
-                        .background(backgroundColor, RoundedCornerShape(4.dp)),
+                        .background(backgroundColor, RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
                     readOnly = true,
                     value = selectedModeItem.label,
                     onValueChange = {},
@@ -651,6 +851,10 @@ private fun MapActionsCard(
 
                 ExposedDropdownMenu(
                     expanded = expanded,
+                    modifier = Modifier.background(
+                        backgroundColor,
+                        RoundedCornerShape(16.dp)
+                    ),
                     onDismissRequest = { onExpandedChange(false) }
                 ) {
                     modeItems.forEach { item ->
@@ -658,14 +862,14 @@ private fun MapActionsCard(
                             text = { 
                                 Text(
                                     item.label,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = contentColor
                                 ) 
                             },
                             leadingIcon = { 
                                 Icon(
                                     item.icon, 
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface
+                                    tint = contentColor
                                 ) 
                             },
                             onClick = {
@@ -673,61 +877,147 @@ private fun MapActionsCard(
                                 onModeSelected(item.mode)
                             },
                             colors = MenuDefaults.itemColors(
-                                textColor = MaterialTheme.colorScheme.onSurface,
-                                leadingIconColor = MaterialTheme.colorScheme.onSurface
+                                textColor = contentColor,
+                                leadingIconColor = contentColor
                             )
                         )
                     }
                 }
             }
             
-            // Reset and Save Buttons
+            // Reset, Save, and Load Buttons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedButton(
+                // Reset Map Button - Red background
+                MapActionButton(
                     onClick = onReset,
+                    icon = Icons.Filled.Delete,
+                    text = "Reset Map",
+                    contentDescription = "Reset Map",
+                    backgroundColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError,
                     modifier = Modifier.weight(1f)
-                ) { 
-                    Text("Reset Map") 
-                }
-
-                OutlinedButton(
-                    onClick = onSave,
-                    modifier = Modifier.weight(1f)
-                ) { 
-                    Text("Save Map") 
-                }
-            }
-            
-            // Saved Maps List
-            if (savedMaps.isNotEmpty()) {
-                Text(
-                    "Saved Maps", 
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                savedMaps.forEach { name ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            name, 
-                            modifier = Modifier.weight(1f),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        TextButton(onClick = { onLoadMap(name) }) { 
-                            Text("Load") 
-                        }
-                        TextButton(onClick = { onDeleteMap(name) }) { 
-                            Text("Delete") 
-                        }
-                    }
-                }
+                // Save Map Button - Tertiary background
+                MapActionButton(
+                    onClick = onSave,
+                    icon = Icons.Filled.Save,
+                    text = "Save Map",
+                    contentDescription = "Save Map",
+                    backgroundColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Load Map Button - Tertiary background
+                MapActionButton(
+                    onClick = onLoad,
+                    icon = Icons.Filled.Folder,
+                    text = "Load Map",
+                    contentDescription = "Load Map",
+                    backgroundColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
+                    modifier = Modifier.weight(1f)
+                )
             }
+        }
+    }
+}
+
+/**
+ * Chip with splash effect that triggers when a map box is tapped
+ */
+@Composable
+private fun ChipWithSplash(
+    chipSplashTrigger: Int,
+    modifier: Modifier = Modifier
+) {
+    // Animation state for splash effect
+    var isAnimating by remember(chipSplashTrigger) { mutableStateOf(false) }
+    
+    // Trigger animation when chipSplashTrigger changes
+    LaunchedEffect(chipSplashTrigger) {
+        if (chipSplashTrigger > 0) {
+            isAnimating = true
+            kotlinx.coroutines.delay(200) // Animation duration
+            isAnimating = false
+        }
+    }
+    
+    // Scale animation for splash effect - scales up then back down
+    val scale by animateFloatAsState(
+        targetValue = if (isAnimating) 0.97f else 1f,
+        animationSpec = tween(durationMillis = 200),
+        label = "chip_splash"
+    )
+    
+    // Alpha animation for additional visual feedback
+    val alpha by animateFloatAsState(
+        targetValue = if (isAnimating) 0.7f else 1f,
+        animationSpec = tween(durationMillis = 200),
+        label = "chip_alpha"
+    )
+    
+    AssistChip(
+        onClick = { /* Non-dismissible */ },
+        label = {
+            Text("Double tap to confirm selection, or it will not be confirmed")
+        },
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = alpha),
+            labelColor = MaterialTheme.colorScheme.error.copy(alpha = alpha)
+        ),
+        modifier = modifier
+            .scale(scale)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.error.copy(alpha = alpha),
+                shape = RoundedCornerShape(8.dp)
+            )
+    )
+}
+
+/**
+ * Map Action Button - Rectangular button with icon and text
+ */
+@Composable
+private fun MapActionButton(
+    onClick: () -> Unit,
+    icon: ImageVector,
+    text: String,
+    contentDescription: String,
+    backgroundColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .height(64.dp) // Increased height to accommodate icon and text vertically
+            .clip(RoundedCornerShape(16.dp)) // Rounded corners
+            .background(backgroundColor)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() }
+            ) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(20.dp),
+                tint = contentColor
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                color = contentColor
+            )
         }
     }
 }

@@ -53,4 +53,5 @@
     <string name="error_message">An unexpected error occurred. Please try again.</string>
     <string name="map">Map</string>
     <string name="obstacle_robot_placement"><![CDATA[Obstacle & Robot Placement]]></string>
+    <string name="saved_maps">Saved Maps</string>
 </resources>
