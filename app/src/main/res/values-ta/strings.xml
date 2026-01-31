@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SC2079 Controller</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">முகப்பு</string>
+    <string name="nav_bluetooth">புளூடூத்</string>
+    <string name="nav_navigation">வழிசெலுத்தல்</string>
+    <string name="nav_theme">தீம்</string>
+    <string name="nav_language">மொழி</string>
+    
+    <!-- Language -->
+    <string name="lang_system">கணினி</string>
+    <string name="lang_english">ஆங்கிலம்</string>
+    <string name="lang_malay">மலாய்</string>
+    <string name="lang_tamil">தமிழ்</string>
+    <string name="lang_chinese_simplified">சீனம் (எளிமைப்படுத்தப்பட்டது)</string>
+    
+    <!-- Theme -->
+    <string name="theme_light">வெளிச்சம்</string>
+    <string name="theme_dark">இருள்</string>
+    <string name="theme_contrast">எதிரெதிர்</string>
+    
+    <!-- Home Screen -->
+    <string name="device_connected">சாதன பெயர்: இணைக்கப்பட்டது</string>
+    <string name="device_disconnected">சாதனம்: இணைக்கப்படவில்லை</string>
+    <string name="controls">கட்டுப்பாடுகள்</string>
+    <string name="activity_status">செயல்பாட்டு நிலை</string>
+    <string name="status_subhead">துணைத் தலைப்பு</string>
+    <string name="action">செயல்</string>
+    
+    <!-- Bluetooth Screen -->
+    <string name="bluetooth_title">புளூடூத்</string>
+    <string name="bluetooth_screen">புளூடூத் திரை</string>
+    <string name="bluetooth_connect_message">உங்கள் ரோபோ சாதனத்துடன் இணைக்க</string>
+    <string name="bluetooth_scan">ஸ்கேன்</string>
+    <string name="bluetooth_no_devices">சாதனங்கள் எதுவும் கிடைக்கவில்லை</string>
+    <string name="bluetooth_device_address">முகவரி: %1$s</string>
+    <string name="bluetooth_device_rssi">சமிக்ஞை: %1$d dBm</string>
+    <string name="bluetooth_connect">இணைக்க</string>
+    
+    <!-- Map -->
+    <string name="map_arena">அரங்க வரைபடம்</string>
+    <string name="map_tap_to_select">தேர்ந்தெடுக்க ஒரு கலத்தைத் தட்டவும்</string>
+    <string name="map_selected">தேர்ந்தெடுக்கப்பட்டது: வரிசை %1$d, நெடுவரிசை %2$d</string>
+    
+    <!-- Common -->
+    <string name="menu">மெனு</string>
+    <string name="back">பின்</string>
+    <string name="retry">மீண்டும் முயற்சி</string>
+    <string name="loading">ஏற்றுகிறது…</string>
+    <string name="changing_language">மொழியை மாற்றுகிறது…</string>
+    <string name="error_title">ஏதோ தவறு நடந்தது</string>
+    <string name="error_message">எதிர்பாராத பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="map">வரைபடம்</string>
+    <string name="obstacle_robot_placement">தடை &amp; ரோபோ வைப்பு</string>
+    <string name="saved_maps">சேமிக்கப்பட்ட வரைபடங்கள்</string>
+    
+    <!-- Map Actions -->
+    <string name="reset_map">வரைபடத்தை மீட்டமை</string>
+    <string name="save_map">வரைபடத்தை சேமி</string>
+    <string name="load_map">வரைபடத்தை ஏற்று</string>
+    <string name="map_mode">வரைபட முறை</string>
+    <string name="cursor">கர்சர்</string>
+    <string name="set_start">தொடக்கத்தை அமை</string>
+    <string name="place_obstacle">தடையை வை</string>
+    <string name="drag_obstacle">தடையை இழு</string>
+    <string name="change_face">முகத்தை மாற்று</string>
+    <string name="double_tap_confirmation">உங்கள் தேர்வை உறுதிப்படுத்த வரைபடத்தில் உள்ள பெட்டியில் இரண்டு முறை தயவுசெய்து தட்டவும்.</string>
+    
+    <!-- Dialogs -->
+    <string name="save_map_title">வரைபடத்தை சேமி</string>
+    <string name="save_map_name">பெயர்</string>
+    <string name="load_map_title">வரைபடத்தை ஏற்று</string>
+    <string name="no_saved_maps">சேமிக்கப்பட்ட வரைபடங்கள் எதுவும் இல்லை.</string>
+    <string name="reset_map_title">வரைபடத்தை மீட்டமை</string>
+    <string name="reset_map_message">வரைபடத்தை மீட்டமைக்க விரும்புகிறீர்களா? இந்த செயலை திரும்பப் பெற முடியாது.</string>
+    <string name="use_map">வரைபடத்தை பயன்படுத்து</string>
+</resources>
+

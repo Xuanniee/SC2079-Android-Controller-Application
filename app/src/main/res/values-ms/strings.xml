@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SC2079 Controller</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Utama</string>
+    <string name="nav_bluetooth">Bluetooth</string>
+    <string name="nav_navigation">Navigasi</string>
+    <string name="nav_theme">Tema</string>
+    <string name="nav_language">Bahasa</string>
+    
+    <!-- Language -->
+    <string name="lang_system">Sistem</string>
+    <string name="lang_english">Bahasa Inggeris</string>
+    <string name="lang_malay">Bahasa Melayu</string>
+    <string name="lang_tamil">Tamil</string>
+    <string name="lang_chinese_simplified">Cina Ringkas</string>
+    
+    <!-- Theme -->
+    <string name="theme_light">Terang</string>
+    <string name="theme_dark">Gelap</string>
+    <string name="theme_contrast">Kontras</string>
+    
+    <!-- Home Screen -->
+    <string name="device_connected">NAMA PERANTI: DISAMBUNG</string>
+    <string name="device_disconnected">PERANTI: TIDAK DISAMBUNG</string>
+    <string name="controls">Kawalan</string>
+    <string name="activity_status">Status Aktiviti</string>
+    <string name="status_subhead">Subjudul</string>
+    <string name="action">Tindakan</string>
+    
+    <!-- Bluetooth Screen -->
+    <string name="bluetooth_title">Bluetooth</string>
+    <string name="bluetooth_screen">Skrin Bluetooth</string>
+    <string name="bluetooth_connect_message">Sambung ke peranti robot anda</string>
+    <string name="bluetooth_scan">Imbas</string>
+    <string name="bluetooth_no_devices">Tiada peranti ditemui</string>
+    <string name="bluetooth_device_address">Alamat: %1$s</string>
+    <string name="bluetooth_device_rssi">Isyarat: %1$d dBm</string>
+    <string name="bluetooth_connect">Sambung</string>
+    
+    <!-- Map -->
+    <string name="map_arena">Peta Arena</string>
+    <string name="map_tap_to_select">Ketuk pada sel untuk memilih</string>
+    <string name="map_selected">Dipilih: Baris %1$d, Lajur %2$d</string>
+    
+    <!-- Common -->
+    <string name="menu">Menu</string>
+    <string name="back">Kembali</string>
+    <string name="retry">Cuba semula</string>
+    <string name="loading">Memuatkan…</string>
+    <string name="changing_language">Menukar bahasa…</string>
+    <string name="error_title">Sesuatu telah berlaku</string>
+    <string name="error_message">Ralat tidak dijangka berlaku. Sila cuba lagi.</string>
+    <string name="map">Peta</string>
+    <string name="obstacle_robot_placement">Penempatan Halangan &amp; Robot</string>
+    <string name="saved_maps">Peta Tersimpan</string>
+    
+    <!-- Map Actions -->
+    <string name="reset_map">Set Semula Peta</string>
+    <string name="save_map">Simpan Peta</string>
+    <string name="load_map">Muat Peta</string>
+    <string name="map_mode">Mod Peta</string>
+    <string name="cursor">Kursor</string>
+    <string name="set_start">Tetapkan Mula</string>
+    <string name="place_obstacle">Letak Halangan</string>
+    <string name="drag_obstacle">Seret Halangan</string>
+    <string name="change_face">Tukar Arah</string>
+    <string name="double_tap_confirmation">Sila ketuk dua kali pada kotak di peta untuk mengesahkan pilihan anda.</string>
+    
+    <!-- Dialogs -->
+    <string name="save_map_title">Simpan Peta</string>
+    <string name="save_map_name">Nama</string>
+    <string name="load_map_title">Muat Peta</string>
+    <string name="no_saved_maps">Tiada peta tersimpan tersedia.</string>
+    <string name="reset_map_title">Set Semula Peta</string>
+    <string name="reset_map_message">Adakah anda pasti mahu menetapkan semula peta? Tindakan ini tidak boleh dibatalkan.</string>
+    <string name="use_map">Guna Peta</string>
+</resources>
+

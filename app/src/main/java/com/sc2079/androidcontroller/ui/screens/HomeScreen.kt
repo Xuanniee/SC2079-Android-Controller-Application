@@ -3,7 +3,10 @@ package com.sc2079.androidcontroller.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,6 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,7 +47,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.AssistChip
@@ -150,8 +160,40 @@ fun HomeScreen(
     }
     
     // Map mode dropdown state
-    var expanded by remember { mutableStateOf(false) }
     val selectedMode = mapUiState.editMode
+    var previousMode by remember { mutableStateOf(selectedMode) }
+    var latestSelectedPosition by remember { mutableStateOf<GridPosition?>(null) }
+    
+    // When mode changes, reset unconfirmed placements
+    LaunchedEffect(selectedMode) {
+        if (previousMode != selectedMode && latestSelectedPosition != null) {
+            // Mode changed - check if there's an unconfirmed placement at the latest selected position
+            val position = latestSelectedPosition!!
+            val x = position.column
+            val y = position.row
+            
+            // Check if there's an obstacle at this position (from PlaceObstacle mode)
+            if (previousMode == MapEditMode.PlaceObstacle) {
+                val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
+                obstacle?.let {
+                    mapViewModel.removeObstacleByNo(it.obstacleId)
+                }
+            }
+            
+            // Check if there's a robot at this position (from SetStart mode)
+            if (previousMode == MapEditMode.SetStart) {
+                mapUiState.robotPosition?.let { robot ->
+                    if (robot.x == x && robot.y == y) {
+                        mapViewModel.clearRobotPosition()
+                    }
+                }
+            }
+            
+            // Reset latest selected position
+            latestSelectedPosition = null
+        }
+        previousMode = selectedMode
+    }
     
     // Save map dialog state
     var showSaveDialog by remember { mutableStateOf(false) }
@@ -198,6 +240,10 @@ fun HomeScreen(
                             // GridPosition(row, column) -> (x=column, y=row)
                             val x = position.column
                             val y = position.row
+                            
+                            // Track latest selected position for mode change detection
+                            latestSelectedPosition = position
+                            
                             mapViewModel.onTapCell(x, y)
                             
                             // Trigger chip splash effect
@@ -234,10 +280,8 @@ fun HomeScreen(
                     Column(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Map Actions Card (Dropdown + Save/Reset)
+                        // Map Actions Card (Toolbar + Save/Reset)
                         MapActionsCard(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = it },
                             selectedMode = selectedMode,
                             onModeSelected = { mapViewModel.setEditMode(it) },
                             onReset = { 
@@ -272,6 +316,10 @@ fun HomeScreen(
                             // GridPosition(row, column) -> (x=column, y=row)
                             val x = position.column
                             val y = position.row
+                            
+                            // Track latest selected position for mode change detection
+                            latestSelectedPosition = position
+                            
                             mapViewModel.onTapCell(x, y)
                             
                             // Trigger chip splash effect
@@ -304,10 +352,8 @@ fun HomeScreen(
                     Column(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        // Map Actions Card (Dropdown + Save/Reset)
+                        // Map Actions Card (Toolbar + Save/Reset)
                         MapActionsCard(
-                            expanded = expanded,
-                            onExpandedChange = { expanded = it },
                             selectedMode = selectedMode,
                             onModeSelected = { mapViewModel.setEditMode(it) },
                             onReset = { 
@@ -348,7 +394,7 @@ fun HomeScreen(
             containerColor = MaterialTheme.colorScheme.surface,
             title = { 
                 Text(
-                    "Save Map",
+                    stringResource(R.string.save_map_title),
                     color = MaterialTheme.colorScheme.onSurface
                 ) 
             },
@@ -357,7 +403,7 @@ fun HomeScreen(
                     TextField(
                         value = saveName,
                         onValueChange = { saveName = it },
-                        label = { Text("Name") },
+                        label = { Text(stringResource(R.string.save_map_name)) },
                         singleLine = true,
                         colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                             focusedTextColor = MaterialTheme.colorScheme.onSurface,
@@ -385,7 +431,7 @@ fun HomeScreen(
                         contentColor = MaterialTheme.colorScheme.onSecondary
                     )
                 ) { 
-                    Text("Save")
+                    Text(stringResource(R.string.save_map))
                 }
             },
             dismissButton = {
@@ -396,7 +442,7 @@ fun HomeScreen(
                         contentColor = MaterialTheme.colorScheme.onSecondary
                     )
                 ) { 
-                    Text("Cancel")
+                    Text(stringResource(R.string.back))
                 }
             }
         )
@@ -412,14 +458,14 @@ fun HomeScreen(
             containerColor = MaterialTheme.colorScheme.surface,
             title = { 
                 Text(
-                    "Load Map",
+                    stringResource(R.string.load_map_title),
                     color = MaterialTheme.colorScheme.onSurface
                 ) 
             },
             text = {
                 if (mapUiState.savedMaps.isEmpty()) {
                     Text(
-                        "No saved maps available.",
+                        stringResource(R.string.no_saved_maps),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 } else {
@@ -469,7 +515,7 @@ fun HomeScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Delete,
-                                        contentDescription = "Delete",
+                                        contentDescription = stringResource(R.string.back),
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
@@ -498,7 +544,7 @@ fun HomeScreen(
                         disabledContentColor = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.5f)
                     )
                 ) { 
-                    Text("Load")
+                    Text(stringResource(R.string.load_map))
                 }
             },
             dismissButton = {
@@ -512,7 +558,7 @@ fun HomeScreen(
                         contentColor = MaterialTheme.colorScheme.onSecondary
                     )
                 ) { 
-                    Text("Cancel")
+                    Text(stringResource(R.string.back))
                 }
             }
         )
@@ -525,13 +571,13 @@ fun HomeScreen(
             containerColor = MaterialTheme.colorScheme.surface,
             title = { 
                 Text(
-                    "Reset Map",
+                    stringResource(R.string.reset_map_title),
                     color = MaterialTheme.colorScheme.onSurface
                 ) 
             },
             text = {
                 Text(
-                    "Are you sure you want to reset the map? This action cannot be undone.",
+                    stringResource(R.string.reset_map_message),
                     color = MaterialTheme.colorScheme.onSurface
                 )
             },
@@ -545,7 +591,7 @@ fun HomeScreen(
                     }
                 }) { 
                     Text(
-                        "Reset",
+                        stringResource(R.string.reset_map),
                         color = MaterialTheme.colorScheme.error
                     ) 
                 }
@@ -553,7 +599,7 @@ fun HomeScreen(
             dismissButton = {
                 TextButton(onClick = { showResetDialog = false }) { 
                     Text(
-                        "Cancel",
+                        stringResource(R.string.back),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -637,29 +683,49 @@ private fun ControlsCard(
 }
 
 /**
- * Direction control buttons (Up, Down, Left, Right)
+ * Direction control buttons (Up, Down, Left, Right) - D-pad layout
  */
 @Composable
 private fun DirectionControlButtons() {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Box(
+        modifier = Modifier
+            .wrapContentSize()
+            .padding(8.dp)
     ) {
-        DirectionButton(
-            direction = Direction.UP,
-            onClick = { /* Handle up */ }
-        )
-        DirectionButton(
-            direction = Direction.DOWN,
-            onClick = { /* Handle down */ }
-        )
-        DirectionButton(
-            direction = Direction.LEFT,
-            onClick = { /* Handle left */ }
-        )
-        DirectionButton(
-            direction = Direction.RIGHT,
-            onClick = { /* Handle right */ }
-        )
+        // Container box to position buttons relative to center
+        Box(
+            modifier = Modifier
+                .size(180.dp, 180.dp) // Size to accommodate all buttons
+                .align(Alignment.Center)
+        ) {
+            // Top button
+            DirectionButton(
+                direction = Direction.UP,
+                onClick = { /* Handle up */ },
+                modifier = Modifier.align(Alignment.TopCenter)
+            )
+            
+            // Bottom button
+            DirectionButton(
+                direction = Direction.DOWN,
+                onClick = { /* Handle down */ },
+                modifier = Modifier.align(Alignment.BottomCenter)
+            )
+            
+            // Left button
+            DirectionButton(
+                direction = Direction.LEFT,
+                onClick = { /* Handle left */ },
+                modifier = Modifier.align(Alignment.CenterStart)
+            )
+            
+            // Right button
+            DirectionButton(
+                direction = Direction.RIGHT,
+                onClick = { /* Handle right */ },
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
+        }
     }
 }
 
@@ -768,8 +834,6 @@ private fun StatusCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MapActionsCard(
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
     selectedMode: MapEditMode,
     onModeSelected: (MapEditMode) -> Unit,
     onReset: () -> Unit,
@@ -778,15 +842,13 @@ private fun MapActionsCard(
     chipSplashTrigger: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    val modeItems = remember {
-        listOf(
-            ModeItem(MapEditMode.Cursor, "Cursor", Icons.Filled.Settings),
-            ModeItem(MapEditMode.SetStart, "Set Start", Icons.Filled.Flag),
-            ModeItem(MapEditMode.PlaceObstacle, "Place Obstacle", Icons.Filled.Edit),
-            ModeItem(MapEditMode.DragObstacle, "Drag Obstacle", Icons.Filled.OpenWith),
-            ModeItem(MapEditMode.ChangeObstacleFace, "Change Face", Icons.Filled.Gesture)
-        )
-    }
+    val modeItems = listOf(
+        ModeItem(MapEditMode.Cursor, stringResource(R.string.cursor), Icons.Filled.Settings),
+        ModeItem(MapEditMode.SetStart, stringResource(R.string.set_start), Icons.Filled.Flag),
+        ModeItem(MapEditMode.PlaceObstacle, stringResource(R.string.place_obstacle), Icons.Filled.Edit),
+        ModeItem(MapEditMode.DragObstacle, stringResource(R.string.drag_obstacle), Icons.Filled.OpenWith),
+        ModeItem(MapEditMode.ChangeObstacleFace, stringResource(R.string.change_face), Icons.Filled.Gesture)
+    )
     val selectedModeItem = modeItems.first { it.mode == selectedMode }
     
     Card(
@@ -807,80 +869,72 @@ private fun MapActionsCard(
                 modifier = Modifier.fillMaxWidth()
             )
             
-            // Map Mode Dropdown
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = onExpandedChange
-            ) {
-                // Use secondary background color
-                val backgroundColor = MaterialTheme.colorScheme.secondaryContainer
-                val contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                
-                TextField(
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                        .background(backgroundColor, RoundedCornerShape(16.dp)),
-                    shape = RoundedCornerShape(16.dp),
-                    readOnly = true,
-                    value = selectedModeItem.label,
-                    onValueChange = {},
-                    singleLine = true,
-                    label = { Text("Map Mode") },
-                    leadingIcon = { 
-                        Icon(
-                            selectedModeItem.icon, 
-                            contentDescription = null,
-                            tint = contentColor
-                        ) 
-                    },
-                    trailingIcon = { 
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) 
-                    },
-                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = contentColor,
-                        unfocusedTextColor = contentColor,
-                        focusedLabelColor = contentColor,
-                        unfocusedLabelColor = contentColor.copy(alpha = 0.7f),
-                        focusedBorderColor = MaterialTheme.colorScheme.outline,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.7f),
-                        focusedContainerColor = backgroundColor,
-                        unfocusedContainerColor = backgroundColor
-                    )
-                )
-
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    modifier = Modifier.background(
-                        backgroundColor,
+            // Map Mode Toolbar
+            Text(
+                text = "${stringResource(R.string.map_mode)}: ${selectedModeItem.label}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .background(
+                        MaterialTheme.colorScheme.secondaryContainer,
                         RoundedCornerShape(16.dp)
-                    ),
-                    onDismissRequest = { onExpandedChange(false) }
-                ) {
-                    modeItems.forEach { item ->
-                        DropdownMenuItem(
-                            text = { 
-                                Text(
-                                    item.label,
-                                    color = contentColor
-                                ) 
-                            },
-                            leadingIcon = { 
+                    )
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                modeItems.forEach { item ->
+                    val isSelected = selectedMode == item.mode
+                    val tooltipState = rememberTooltipState()
+                    val scope = rememberCoroutineScope()
+                    
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = {
+                            PlainTooltip {
+                                Text(item.label)
+                            }
+                        },
+                        state = tooltipState
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .pointerInput(item.mode) {
+                                    detectTapGestures(
+                                        onLongPress = {
+                                            scope.launch {
+                                                tooltipState.show()
+                                            }
+                                        }
+                                    )
+                                }
+                        ) {
+                            IconButton(
+                                onClick = { onModeSelected(item.mode) },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.tertiary else Color.Transparent,
+                                        RoundedCornerShape(12.dp)
+                                    )
+                            ) {
                                 Icon(
-                                    item.icon, 
-                                    contentDescription = null,
-                                    tint = contentColor
-                                ) 
-                            },
-                            onClick = {
-                                onExpandedChange(false)
-                                onModeSelected(item.mode)
-                            },
-                            colors = MenuDefaults.itemColors(
-                                textColor = contentColor,
-                                leadingIconColor = contentColor
-                            )
-                        )
+                                    imageVector = item.icon,
+                                    contentDescription = item.label,
+                                    modifier = Modifier.size(24.dp),
+                                    tint = if (isSelected) {
+                                        MaterialTheme.colorScheme.onTertiary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -893,8 +947,8 @@ private fun MapActionsCard(
                 MapActionButton(
                     onClick = onReset,
                     icon = Icons.Filled.Delete,
-                    text = "Reset Map",
-                    contentDescription = "Reset Map",
+                    text = stringResource(R.string.reset_map),
+                    contentDescription = stringResource(R.string.reset_map),
                     backgroundColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError,
                     modifier = Modifier.weight(1f)
@@ -904,8 +958,8 @@ private fun MapActionsCard(
                 MapActionButton(
                     onClick = onSave,
                     icon = Icons.Filled.Save,
-                    text = "Save Map",
-                    contentDescription = "Save Map",
+                    text = stringResource(R.string.save_map),
+                    contentDescription = stringResource(R.string.save_map),
                     backgroundColor = MaterialTheme.colorScheme.tertiary,
                     contentColor = MaterialTheme.colorScheme.onTertiary,
                     modifier = Modifier.weight(1f)
@@ -915,8 +969,8 @@ private fun MapActionsCard(
                 MapActionButton(
                     onClick = onLoad,
                     icon = Icons.Filled.Folder,
-                    text = "Load Map",
-                    contentDescription = "Load Map",
+                    text = stringResource(R.string.load_map),
+                    contentDescription = stringResource(R.string.load_map),
                     backgroundColor = MaterialTheme.colorScheme.tertiary,
                     contentColor = MaterialTheme.colorScheme.onTertiary,
                     modifier = Modifier.weight(1f)
@@ -963,7 +1017,7 @@ private fun ChipWithSplash(
     AssistChip(
         onClick = { /* Non-dismissible */ },
         label = {
-            Text("Double tap to confirm selection, or it will not be confirmed")
+            Text(stringResource(R.string.double_tap_confirmation))
         },
         colors = AssistChipDefaults.assistChipColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = alpha),
