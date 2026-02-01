@@ -18,9 +18,8 @@ val LightTertiary = Color(0xFFe2e8f0)
 // Approximate RGB conversion: #3D3D4A
 val DarkText = Color(0xFF3D3D4A)
 
-// Error (Red): oklch(63.7% 0.237 25.331)
-// Approximate RGB conversion: #D84315
-val CustomError = Color(0xFFD84315)
+// Error (Red): #ef4444
+val CustomError = Color(0xFFef4444)
 
 // Success (Green): oklch(79.2% 0.209 151.711)
 // Approximate RGB conversion: #4CAF50

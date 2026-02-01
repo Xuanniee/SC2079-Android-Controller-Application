@@ -46,6 +46,8 @@ import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -73,6 +75,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.sc2079.androidcontroller.R
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 
+import com.sc2079.androidcontroller.features.control.ControlState
 import com.sc2079.androidcontroller.features.language.presentation.AppLanguage
 import com.sc2079.androidcontroller.features.language.presentation.LocaleState
 import com.sc2079.androidcontroller.features.tts.rememberTextToSpeechManager
@@ -241,6 +244,30 @@ fun AppScaffold(
                     LanguageDropdown(
                         currentLanguage = LocaleState.currentLanguage,
                         onLanguageChange = { LocaleState.setLanguage(it) },
+                        modifier = Modifier.padding(horizontal = 28.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Control Section
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 28.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text(
+                        text = stringResource(R.string.nav_control),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp)
+                    )
+                    
+                    // Right-handed control toggle
+                    RightHandedControlToggle(
+                        isRightHanded = ControlState.isRightHanded,
+                        onToggleChange = { ControlState.isRightHanded = it },
                         modifier = Modifier.padding(horizontal = 28.dp)
                     )
                     
@@ -854,5 +881,40 @@ private fun LanguageDropdown(
                 )
             }
         }
+    }
+}
+
+/**
+ * Right-handed control toggle switch
+ */
+@Composable
+private fun RightHandedControlToggle(
+    isRightHanded: Boolean,
+    onToggleChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.right_handed_control),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f)
+        )
+        Switch(
+            checked = isRightHanded,
+            onCheckedChange = onToggleChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        )
     }
 }

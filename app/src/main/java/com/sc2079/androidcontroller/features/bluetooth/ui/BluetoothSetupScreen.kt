@@ -11,9 +11,12 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -66,137 +69,244 @@ fun BluetoothSetupScreen(
     ) { }
 
     // UI Elements of Setup Page from Top to Bottom
-    Column(
-        modifier
-            .fillMaxSize()
-            .padding(16.dp)
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize()
     ) {
-        // Page Name
-        Text("Bluetooth Setup", style = MaterialTheme.typography.titleLarge)
+        // Detect mobile phone: use smallest width (sw600dp breakpoint)
+        // Mobile: smallest dimension < 600dp, Tablet: smallest dimension >= 600dp
+        val minDimension = minOf(maxWidth, maxHeight)
+        val isMobile = minDimension < 600.dp
+        
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
+            // Page Name
+            Text("Bluetooth Setup", style = MaterialTheme.typography.titleLarge)
 
-        Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
 
-        // Connection Status
-        Text("Status: ${formatBluetoothConnState(bluetoothUiState.bluetoothConnState)}")
+            // Connection Status
+            Text("Status: ${formatBluetoothConnState(bluetoothUiState.bluetoothConnState)}")
 
-        bluetoothUiState.lastError?.let {
+            bluetoothUiState.lastError?.let {
+                Spacer(Modifier.height(8.dp))
+                Text("Error: $it", color = MaterialTheme.colorScheme.error)
+            }
+
+            Spacer(Modifier.height(12.dp))
+
+            // Buttons layout: 2 columns on mobile, single row on tablet
+            if (isMobile) {
+                // Mobile: 2-column layout using Column and Rows
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // First row: Load Paired, Scan
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Load Paired button
+                        BluetoothActionButton(
+                            onClick = { bluetoothViewModel.retrievePairedDevices() },
+                            icon = Icons.Default.Refresh,
+                            label = "Load Paired",
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Scan / Stop Scan button
+                        val isScanningActive = bluetoothUiState.isScanning
+                        BluetoothActionButton(
+                            onClick = {
+                                if (isScanningActive) {
+                                    bluetoothViewModel.stopBluetoothScan()
+                                } else {
+                                    bluetoothViewModel.startBluetoothScan()
+                                }
+                            },
+                            icon = if (isScanningActive) Icons.Default.Cancel else Icons.Default.Search,
+                            label = if (isScanningActive) "Stop Scan" else "Scan",
+                            backgroundColor = if (isScanningActive) MaterialTheme.colorScheme.tertiaryContainer 
+                                              else MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    
+                    // Second row: Host, Discoverable
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Host (Server) button
+                        val isHostingActive = bluetoothUiState.bluetoothConnState is BluetoothConnState.Listening
+                        BluetoothActionButton(
+                            onClick = { bluetoothViewModel.hostBluetoothServer() },
+                            icon = Icons.Default.Settings,
+                            label = "Host",
+                            backgroundColor = if (isHostingActive) MaterialTheme.colorScheme.tertiaryContainer 
+                                              else MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Make Discoverable button
+                        BluetoothActionButton(
+                            onClick = {
+                                val intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
+                                    putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
+                                }
+                                deviceDiscoverableLauncher.launch(intent)
+                            },
+                            icon = Icons.Default.Visibility,
+                            label = "Discoverable",
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    
+                    // Third row: Connect, Disconnect
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Connect button
+                        BluetoothActionButton(
+                            onClick = { bluetoothViewModel.connectSelectedDevice() },
+                            icon = Icons.Default.Link,
+                            label = "Connect",
+                            enabled = bluetoothUiState.selectedDeviceAddress != null,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        // Disconnect button
+                        val isDisconnected = bluetoothUiState.bluetoothConnState is BluetoothConnState.Disconnected
+                        BluetoothActionButton(
+                            onClick = { bluetoothViewModel.disconnect() },
+                            icon = Icons.Default.Close,
+                            label = "Disconnect",
+                            enabled = !isDisconnected,
+                            backgroundColor = if (isDisconnected) MaterialTheme.colorScheme.secondaryContainer 
+                                              else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            } else {
+                // Tablet: Single row layout
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Load Paired button
+                    BluetoothActionButton(
+                        onClick = { bluetoothViewModel.retrievePairedDevices() },
+                        icon = Icons.Default.Refresh,
+                        label = "Load Paired",
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Scan / Stop Scan button with smooth transitions
+                    val isScanningActive = bluetoothUiState.isScanning
+                    BluetoothActionButton(
+                        onClick = {
+                            if (isScanningActive) {
+                                bluetoothViewModel.stopBluetoothScan()
+                            } else {
+                                bluetoothViewModel.startBluetoothScan()
+                            }
+                        },
+                        icon = if (isScanningActive) Icons.Default.Cancel else Icons.Default.Search,
+                        label = if (isScanningActive) "Stop Scan" else "Scan",
+                        backgroundColor = if (isScanningActive) MaterialTheme.colorScheme.tertiaryContainer 
+                                          else MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Host (Server) button
+                    val isHostingActive = bluetoothUiState.bluetoothConnState is BluetoothConnState.Listening
+                    BluetoothActionButton(
+                        onClick = { bluetoothViewModel.hostBluetoothServer() },
+                        icon = Icons.Default.Settings,
+                        label = "Host",
+                        backgroundColor = if (isHostingActive) MaterialTheme.colorScheme.tertiaryContainer 
+                                          else MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Make Discoverable button
+                    BluetoothActionButton(
+                        onClick = {
+                            val intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
+                                putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
+                            }
+                            deviceDiscoverableLauncher.launch(intent)
+                        },
+                        icon = Icons.Default.Visibility,
+                        label = "Discoverable",
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Connect button
+                    BluetoothActionButton(
+                        onClick = { bluetoothViewModel.connectSelectedDevice() },
+                        icon = Icons.Default.Link,
+                        label = "Connect",
+                        enabled = bluetoothUiState.selectedDeviceAddress != null,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Disconnect button (red background when not disconnected, disabled when disconnected)
+                    val isDisconnected = bluetoothUiState.bluetoothConnState is BluetoothConnState.Disconnected
+                    BluetoothActionButton(
+                        onClick = { bluetoothViewModel.disconnect() },
+                        icon = Icons.Default.Close,
+                        label = "Disconnect",
+                        enabled = !isDisconnected,
+                        backgroundColor = if (isDisconnected) MaterialTheme.colorScheme.secondaryContainer 
+                                          else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            
+            Spacer(Modifier.height(12.dp))
+
+            // No direct BluetoothDevice.name access in UI (avoids MissingPermission lint)
+            Text("Selected: ${bluetoothUiState.selectedDeviceName}")
+            bluetoothUiState.selectedDeviceAddress?.let { addr ->
+                Text(addr, style = MaterialTheme.typography.bodySmall)
+            }
+
             Spacer(Modifier.height(8.dp))
-            Text("Error: $it", color = MaterialTheme.colorScheme.error)
-        }
 
-        Spacer(Modifier.height(12.dp))
-
-        // All buttons in one row with squarish shape, rounded 16.dp borders, secondary background, and icons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Load Paired button
-            BluetoothActionButton(
-                onClick = { bluetoothViewModel.retrievePairedDevices() },
-                icon = Icons.Default.Refresh,
-                label = "Load Paired",
-                modifier = Modifier.weight(1f)
+            Text("Paired Devices", style = MaterialTheme.typography.titleMedium)
+            DeviceList(
+                devices = bluetoothUiState.pairedBtDevices,
+                selectedAddress = bluetoothUiState.selectedDeviceAddress,
+                onSelect = bluetoothViewModel::selectDevice
             )
 
-            // Scan / Stop Scan button with smooth transitions
-            val isScanningActive = bluetoothUiState.isScanning
-            BluetoothActionButton(
-                onClick = {
-                    if (isScanningActive) {
-                        bluetoothViewModel.stopBluetoothScan()
-                    } else {
-                        bluetoothViewModel.startBluetoothScan()
-                    }
-                },
-                icon = if (isScanningActive) Icons.Default.Cancel else Icons.Default.Search,
-                label = if (isScanningActive) "Stop Scan" else "Scan",
-                backgroundColor = if (isScanningActive) MaterialTheme.colorScheme.tertiaryContainer 
-                                  else MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.weight(1f)
+            Spacer(Modifier.height(12.dp))
+
+            Text("Discovered Devices", style = MaterialTheme.typography.titleMedium)
+            DeviceList(
+                devices = bluetoothUiState.discoveredBtDevices,
+                selectedAddress = bluetoothUiState.selectedDeviceAddress,
+                onSelect = bluetoothViewModel::selectDevice
             )
 
-            // Host (Server) button
-            val isHostingActive = bluetoothUiState.bluetoothConnState is BluetoothConnState.Listening
-            BluetoothActionButton(
-                onClick = { bluetoothViewModel.hostBluetoothServer() },
-                icon = Icons.Default.Settings,
-                label = "Host",
-                backgroundColor = if (isHostingActive) MaterialTheme.colorScheme.tertiaryContainer 
-                                  else MaterialTheme.colorScheme.secondaryContainer,
-                modifier = Modifier.weight(1f)
-            )
+            Spacer(Modifier.height(12.dp))
 
-            // Make Discoverable button
-            BluetoothActionButton(
-                onClick = {
-                    val intent = Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE).apply {
-                        putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
-                    }
-                    deviceDiscoverableLauncher.launch(intent)
-                },
-                icon = Icons.Default.Visibility,
-                label = "Discoverable",
-                modifier = Modifier.weight(1f)
-            )
-
-            // Connect button
-            BluetoothActionButton(
-                onClick = { bluetoothViewModel.connectSelectedDevice() },
-                icon = Icons.Default.Link,
-                label = "Connect",
-                enabled = bluetoothUiState.selectedDeviceAddress != null,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Disconnect button (red background when not disconnected, disabled when disconnected)
-            val isDisconnected = bluetoothUiState.bluetoothConnState is BluetoothConnState.Disconnected
-            BluetoothActionButton(
-                onClick = { bluetoothViewModel.disconnect() },
-                icon = Icons.Default.Close,
-                label = "Disconnect",
-                enabled = !isDisconnected,
-                backgroundColor = if (isDisconnected) MaterialTheme.colorScheme.secondaryContainer 
-                                  else MaterialTheme.colorScheme.error,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        // No direct BluetoothDevice.name access in UI (avoids MissingPermission lint)
-        Text("Selected: ${bluetoothUiState.selectedDeviceName}")
-        bluetoothUiState.selectedDeviceAddress?.let { addr ->
-            Text(addr, style = MaterialTheme.typography.bodySmall)
-        }
-
-        Spacer(Modifier.height(8.dp))
-
-        Text("Paired Devices", style = MaterialTheme.typography.titleMedium)
-        DeviceList(
-            devices = bluetoothUiState.pairedBtDevices,
-            selectedAddress = bluetoothUiState.selectedDeviceAddress,
-            onSelect = bluetoothViewModel::selectDevice
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        Text("Discovered Devices", style = MaterialTheme.typography.titleMedium)
-        DeviceList(
-            devices = bluetoothUiState.discoveredBtDevices,
-            selectedAddress = bluetoothUiState.selectedDeviceAddress,
-            onSelect = bluetoothViewModel::selectDevice
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        val connectedChat = bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected
-        Button(
-            onClick = onOpenChat,
-            enabled = connectedChat,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Open Chat")
+            val connectedChat = bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected
+            Button(
+                onClick = onOpenChat,
+                enabled = connectedChat,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Open Chat")
+            }
         }
     }
 }

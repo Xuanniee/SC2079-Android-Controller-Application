@@ -7,6 +7,8 @@
     <string name="nav_navigation">Navigation</string>
     <string name="nav_theme">Theme</string>
     <string name="nav_language">Language</string>
+    <string name="nav_control">Control</string>
+    <string name="right_handed_control">Right-handed Control</string>
     
     <!-- Language -->
     <string name="lang_system">System</string>
@@ -24,6 +26,8 @@
     <string name="device_connected">DEVICE NAME: CONNECTED</string>
     <string name="device_disconnected">DEVICE: DISCONNECTED</string>
     <string name="controls">Controls</string>
+    <string name="map_mode_tab">Map Mode</string>
+    <string name="controller_tab">Controller</string>
     <string name="activity_status">Activity Status</string>
     <string name="status_subhead">Subhead</string>
     <string name="action">Action</string>

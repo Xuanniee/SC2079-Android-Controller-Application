@@ -244,6 +244,7 @@ private fun MapBox(
     // Show animation if this box is the latest selected and flash animation is active
     val showAnimatedBorder = !confirmedState && isLatestSelected && showFlashAnimation
     val staticBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+    val errorColor = MaterialTheme.colorScheme.error // Read error color in composable context
     
     val density = LocalDensity.current
     val textSizePx = with(density) { 11.sp.toPx() }
@@ -333,10 +334,10 @@ private fun MapBox(
                                 pathMeasure.getSegment(0f, (startDistance + snakeLength) % totalLength, destinationPath)
                             }
                             
-                            // Draw the animated path
+                            // Draw the animated path using theme error color
                             drawPath(
                                 path = destinationPath,
-                                color = Color.Red,
+                                color = errorColor,
                                 style = Stroke(
                                     width = strokeWidth,
                                     cap = StrokeCap.Round,

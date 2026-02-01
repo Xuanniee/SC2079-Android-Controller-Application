@@ -207,9 +207,9 @@ class BluetoothViewModel(
         bluetoothManager.startBluetoothServer(serviceName = "SC2079_BT")
     }
 
-    // Disconnect the BT Conn
+    // Disconnect the BT Conn (user-initiated)
     fun disconnect() {
-        bluetoothManager.disconnectBluetooth()
+        bluetoothManager.disconnectBluetooth(userInitiated = true)
     }
 
     // Send a Command to the Robot
@@ -236,6 +236,6 @@ class BluetoothViewModel(
         try {
             bluetoothScanJob?.cancel()
         } catch (_: Exception) {}
-        bluetoothManager.disconnectBluetooth()
+        bluetoothManager.disconnectBluetooth(userInitiated = true) // App closing is user-initiated
     }
 }
