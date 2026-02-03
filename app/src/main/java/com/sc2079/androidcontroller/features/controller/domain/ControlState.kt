@@ -1,4 +1,4 @@
-package com.sc2079.androidcontroller.features.control
+package com.sc2079.androidcontroller.features.controller.domain
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf

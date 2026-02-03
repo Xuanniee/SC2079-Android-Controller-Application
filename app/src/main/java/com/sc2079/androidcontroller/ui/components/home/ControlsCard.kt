@@ -19,12 +19,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sc2079.androidcontroller.R
+import com.sc2079.androidcontroller.features.controller.domain.model.ActivityStatus
 
 /**
  * Controls card component
  */
 @Composable
 fun ControlsCard(
+    activityStatus: ActivityStatus,
+    onUpClick: () -> Unit = {},
+    onDownClick: () -> Unit = {},
+    onLeftClick: () -> Unit = {},
+    onRightClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -54,12 +60,16 @@ fun ControlsCard(
             // Activity Status Card
             StatusCard(
                 title = stringResource(R.string.activity_status),
-                subtitle = stringResource(R.string.status_subhead),
+                status = activityStatus,
                 modifier = Modifier.fillMaxWidth()
             )
             
             // Direction Control Buttons - centered with proper spacing
             DirectionControlButtons(
+                onUpClick = onUpClick,
+                onDownClick = onDownClick,
+                onLeftClick = onLeftClick,
+                onRightClick = onRightClick,
                 modifier = Modifier.fillMaxWidth()
             )
         }

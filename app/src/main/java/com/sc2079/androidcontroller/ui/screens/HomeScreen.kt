@@ -111,7 +111,17 @@ import com.sc2079.androidcontroller.ui.components.FadeInAnimation
 import com.sc2079.androidcontroller.ui.components.dialogs.LoadMapDialog
 import com.sc2079.androidcontroller.ui.components.dialogs.ResetMapDialog
 import com.sc2079.androidcontroller.ui.components.dialogs.SaveMapDialog
-import com.sc2079.androidcontroller.features.control.ControlState
+import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
+import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
+import com.sc2079.androidcontroller.features.controller.domain.ControlState
+import com.sc2079.androidcontroller.features.controller.domain.model.ActivityStatus
+import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
+import com.sc2079.androidcontroller.features.controller.domain.usecase.MoveRobotUseCase
+import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
+import com.sc2079.androidcontroller.features.map.presentation.RobotInboundEvent
+import com.sc2079.androidcontroller.features.map.presentation.RobotMessageParser
+import kotlinx.coroutines.delay
+import java.nio.charset.Charset
 import com.sc2079.androidcontroller.ui.components.home.ControlsCard
 import com.sc2079.androidcontroller.ui.components.home.MapCard
 import com.sc2079.androidcontroller.ui.components.map.MapActionsCard
@@ -134,26 +144,162 @@ fun HomeScreen(
 ) {
     // Collect the MapUiState as a Stateflow for UI changes
     val mapUiState by mapViewModel.uiState.collectAsState()
-
-    // Process only new robot messages (so recomposition doesn't re-apply)
-    val btUi by bluetoothViewModel.bluetoothUiState.collectAsState()
-    var lastProcessedIdx by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(btUi.messages.size) {
-        val msgs = btUi.messages
-        for (i in lastProcessedIdx until msgs.size) {
-            val m = msgs[i]
-            if (m.fromRobot) mapViewModel.applyRobotMessage(m.messageBody)
-        }
-        lastProcessedIdx = msgs.size
+    
+    // Get Bluetooth state
+    val bluetoothUiState by bluetoothViewModel.bluetoothUiState.collectAsState()
+    
+    // Initialize RobotStatus state and MoveRobotUseCase
+    val moveRobotUseCase = remember { MoveRobotUseCase() }
+    var robotStatus by remember { 
+        mutableStateOf<RobotStatus?>(
+            // Initialize from map's robot position if available
+            mapUiState.robotPosition?.let { 
+                RobotStatus.fromPosition(it.x, it.y, it.faceDir)
+            }
+        )
     }
-
-    // Face picker dialog state
-    var facePickerForObstacle by remember { mutableStateOf<Int?>(null) }
-    val obstacleNo = facePickerForObstacle
-
-    // Convert MapUiState to CellState map
-    val cellStates = remember(mapUiState.obstacles, mapUiState.robotPosition) {
+    
+    // Get coroutine scope for async operations
+    val robotScope = rememberCoroutineScope()
+    
+    // Track if robot is scanning (when "ROBOT" or "scanning" string is received)
+    var isRobotScanning by remember { mutableStateOf(false) }
+    
+    // Listen to incoming Bluetooth messages and parse ROBOT messages
+    LaunchedEffect(Unit) {
+        bluetoothViewModel.incomingBtBytes.collect { bytes ->
+            val message = String(bytes, Charset.defaultCharset())
+            val messageUpper = message.uppercase().trim()
+            
+            // Check for "ROBOT,scanning" pattern first (case insensitive)
+            // This is a special message indicating the robot is scanning
+            // Matches: "ROBOT,scanning", "ROBOT, scanning", "robot,scanning", etc.
+            if (messageUpper.matches(Regex("ROBOT\\s*,\\s*SCANNING"))) {
+                // Set scanning status
+                isRobotScanning = true
+                // Reset scanning status after 2 seconds
+                robotScope.launch {
+                    delay(2000)
+                    isRobotScanning = false
+                }
+                return@collect // Don't process further if it's a scanning message
+            }
+            
+            // Check for "ROBOT,stopped" pattern (case insensitive)
+            // This is a special message indicating the robot has stopped
+            // Matches: "ROBOT,stopped", "ROBOT, stopped", "robot,stopped", etc.
+            if (messageUpper.matches(Regex("ROBOT\\s*,\\s*STOPPED"))) {
+                // Update robotStatus to indicate stopped
+                robotStatus = robotStatus?.copy(
+                    isMoving = false,
+                    statusMessage = "Stopped"
+                ) ?: RobotStatus(
+                    x = 0,
+                    y = 0,
+                    faceDir = FaceDir.UP,
+                    statusMessage = "Stopped",
+                    isMoving = false
+                )
+                return@collect // Don't process further if it's a stopped message
+            }
+            
+            // Parse messages to check for valid ROBOT position messages ("ROBOT, x, y, direction")
+            val events = RobotMessageParser.parse(message)
+            
+            // Process ROBOT messages to update robot position and set moving status
+            events.forEach { event ->
+                if (event is RobotInboundEvent.RobotPoseEvent) {
+                    // Update robotStatus with new position from ROBOT message
+                    // This indicates the robot is moving (only when ROBOT message is received)
+                    robotStatus = RobotStatus(
+                        x = event.x,
+                        y = event.y,
+                        faceDir = event.dir,
+                        statusMessage = "Moving",
+                        isMoving = true
+                    )
+                    
+                    // Reset isMoving to false after 2 seconds (robot stopped moving)
+                    robotScope.launch {
+                        delay(2000)
+                        robotStatus = robotStatus?.copy(
+                            isMoving = false,
+                            statusMessage = "Stopped"
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    // Update robotStatus when map's robot position changes (from external sources)
+    // But only if it's not from a ROBOT message (to avoid overwriting)
+    LaunchedEffect(mapUiState.robotPosition) {
+        // Only update if robotStatus is null or not currently moving
+        if (robotStatus == null || robotStatus?.isMoving != true) {
+            mapUiState.robotPosition?.let { robotPos ->
+                robotStatus = RobotStatus.fromPosition(robotPos.x, robotPos.y, robotPos.faceDir)
+            }
+        }
+    }
+    
+    // Update map's robot position when robotStatus changes (from control buttons)
+    LaunchedEffect(robotStatus) {
+        robotStatus?.let { status ->
+            // Update robot position on map
+            if (mapUiState.editMode == MapEditMode.SetStart) {
+                mapViewModel.onTapCell(status.x, status.y)
+            } else {
+                // If not in SetStart mode, we need to update the robot position directly
+                // This will be handled by the map when robotStatus changes
+            }
+        }
+    }
+    
+    // Handler functions for control buttons
+    val handleMoveUp = {
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.UP)
+        robotStatus = moveRobotUseCase.moveAbsolute(current, "up")
+    }
+    
+    val handleMoveDown = {
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.UP)
+        robotStatus = moveRobotUseCase.moveAbsolute(current, "down")
+    }
+    
+    val handleMoveLeft = {
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.UP)
+        robotStatus = moveRobotUseCase.moveAbsolute(current, "left")
+    }
+    
+    val handleMoveRight = {
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.UP)
+        robotStatus = moveRobotUseCase.moveAbsolute(current, "right")
+    }
+    
+    // Compute ActivityStatus based on Bluetooth state and robot status
+    val activityStatus = remember(bluetoothUiState.bluetoothConnState, bluetoothUiState.isScanning, robotStatus, isRobotScanning) {
+        when {
+            // Scanning takes priority - check if robot sent "ROBOT" or "scanning" message
+            isRobotScanning -> ActivityStatus.SCANNING
+            bluetoothUiState.isScanning -> ActivityStatus.SCANNING
+            bluetoothUiState.bluetoothConnState is BluetoothConnState.Connecting -> ActivityStatus.SCANNING
+            bluetoothUiState.bluetoothConnState is BluetoothConnState.Listening -> ActivityStatus.SCANNING
+            // If connected, check robot movement status
+            bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected -> {
+                when {
+                    robotStatus?.isMoving == true -> ActivityStatus.MOVING
+                    robotStatus != null -> ActivityStatus.STOPPED
+                    else -> ActivityStatus.CONNECTED
+                }
+            }
+            // Default to disconnected
+            else -> ActivityStatus.DISCONNECTED
+        }
+    }
+    
+    // Convert MapUiState to CellState map, using robotStatus if available
+    val cellStates = remember(mapUiState.obstacles, robotStatus, mapUiState.robotPosition) {
         val states = mutableMapOf<GridPosition, CellState>()
         // Add obstacles
         mapUiState.obstacles.forEach { obstacle ->
@@ -166,8 +312,11 @@ fun HomeScreen(
                 displayedTargetId = obstacle.displayedTargetId
             )
         }
-        // Add robot position
-        mapUiState.robotPosition?.let { robot ->
+        // Add robot position - prefer robotStatus over mapUiState.robotPosition
+        val robotPos = robotStatus ?: mapUiState.robotPosition?.let { 
+            RobotStatus.fromPosition(it.x, it.y, it.faceDir)
+        }
+        robotPos?.let { robot ->
             val position = GridPosition(robot.y, robot.x) // y=row, x=column
             states[position] = CellState(
                 position = position,
@@ -353,6 +502,11 @@ fun HomeScreen(
                                         1 -> {
                                             // Controls Card
                                             ControlsCard(
+                                                activityStatus = activityStatus,
+                                                onUpClick = handleMoveUp,
+                                                onDownClick = handleMoveDown,
+                                                onLeftClick = handleMoveLeft,
+                                                onRightClick = handleMoveRight,
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         }
@@ -385,7 +539,13 @@ fun HomeScreen(
                                 )
                                 
                                 // Controls Card
-                                ControlsCard()
+                                ControlsCard(
+                                    activityStatus = activityStatus,
+                                    onUpClick = handleMoveUp,
+                                    onDownClick = handleMoveDown,
+                                    onLeftClick = handleMoveLeft,
+                                    onRightClick = handleMoveRight
+                                )
                             }
                         }
                     }
@@ -436,6 +596,11 @@ fun HomeScreen(
                                         1 -> {
                                             // Controls Card
                                             ControlsCard(
+                                                activityStatus = activityStatus,
+                                                onUpClick = handleMoveUp,
+                                                onDownClick = handleMoveDown,
+                                                onLeftClick = handleMoveLeft,
+                                                onRightClick = handleMoveRight,
                                                 modifier = Modifier.fillMaxSize()
                                             )
                                         }
@@ -468,7 +633,13 @@ fun HomeScreen(
                                 )
                                 
                                 // Controls Card
-                                ControlsCard()
+                                ControlsCard(
+                                    activityStatus = activityStatus,
+                                    onUpClick = handleMoveUp,
+                                    onDownClick = handleMoveDown,
+                                    onLeftClick = handleMoveLeft,
+                                    onRightClick = handleMoveRight
+                                )
                             }
                         }
                     }
@@ -600,6 +771,11 @@ fun HomeScreen(
                                 1 -> {
                                     // Controls Card
                                     ControlsCard(
+                                        activityStatus = activityStatus,
+                                        onUpClick = handleMoveUp,
+                                        onDownClick = handleMoveDown,
+                                        onLeftClick = handleMoveLeft,
+                                        onRightClick = handleMoveRight,
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                 }
@@ -631,11 +807,21 @@ fun HomeScreen(
                                 
                                 // Controls Card - 1/2 width
                                 ControlsCard(
+                                    activityStatus = activityStatus,
+                                    onUpClick = handleMoveUp,
+                                    onDownClick = handleMoveDown,
+                                    onLeftClick = handleMoveLeft,
+                                    onRightClick = handleMoveRight,
                                     modifier = Modifier.weight(1f)
                                 )
                             } else {
                                 // Left-handed: Controls Card on left, Map Actions Card on right
                                 ControlsCard(
+                                    activityStatus = activityStatus,
+                                    onUpClick = handleMoveUp,
+                                    onDownClick = handleMoveDown,
+                                    onLeftClick = handleMoveLeft,
+                                    onRightClick = handleMoveRight,
                                     modifier = Modifier.weight(1f)
                                 )
                                 
@@ -807,11 +993,12 @@ private fun CustomTab(
     }
 }
 
-//@Preview(showBackground = true)
-//@Composable
-//fun HomeScreenPreview() {
-//    SC2079AndroidControllerApplicationTheme {
-//        HomeScreen(
-//        )
-//    }
-//}
+// Preview commented out - requires BluetoothViewModel dependency
+// @Preview(showBackground = true)
+// @Composable
+// fun HomeScreenPreview() {
+//     SC2079AndroidControllerApplicationTheme {
+//         // HomeScreen requires bluetoothViewModel parameter
+//         // Preview would need a mock BluetoothClassicManager
+//     }
+// }

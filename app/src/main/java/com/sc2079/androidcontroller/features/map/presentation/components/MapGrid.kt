@@ -83,12 +83,12 @@ enum class CellType {
 }
 
 /**
- * A 15x21 grid component for the map view.
+ * A 20x20 grid component for the map view.
  * Each cell is clickable and fires an event with its position.
  * The grid fills all available width and is scrollable if needed.
  *
- * @param columns Number of columns (default 15)
- * @param rows Number of rows (default 21)
+ * @param columns Number of columns (default 20)
+ * @param rows Number of rows (default 20)
  * @param cellStates Map of grid positions to their states
  * @param onCellClick Callback fired when a cell is clicked with its position
  * @param modifier Modifier for the grid
@@ -245,7 +245,7 @@ private fun MapBox(
     val backgroundColor = when {
         cellState.isSelected -> MaterialTheme.colorScheme.primaryContainer
         cellState.cellType == CellType.OBSTACLE -> Color(0xFFB39DDB) // Purple for obstacles
-        cellState.cellType == CellType.ROBOT -> Color(0xFF80CBC4) // Teal for robot
+        cellState.cellType == CellType.ROBOT -> Color(0xFFE53935) // Red for robot
         else -> getCellColor(cellState.cellType)
     }
 
@@ -526,7 +526,7 @@ private fun getCellColor(cellType: CellType): Color {
     return when (cellType) {
         CellType.EMPTY -> MaterialTheme.colorScheme.tertiary // Map tiles use tertiary
         CellType.OBSTACLE -> Color(0xFFB39DDB) // Purple for obstacles (matches GridMapCanvas)
-        CellType.ROBOT -> Color(0xFF80CBC4) // Teal for robot (matches GridMapCanvas)
+        CellType.ROBOT -> Color(0xFFE53935) // Red for robot
         CellType.TARGET -> MaterialTheme.colorScheme.error
         CellType.PATH -> MaterialTheme.colorScheme.secondary
         CellType.EXPLORED -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)

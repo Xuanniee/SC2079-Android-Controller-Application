@@ -75,7 +75,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.sc2079.androidcontroller.R
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 
-import com.sc2079.androidcontroller.features.control.ControlState
+import com.sc2079.androidcontroller.features.controller.domain.ControlState
 import com.sc2079.androidcontroller.features.language.presentation.AppLanguage
 import com.sc2079.androidcontroller.features.language.presentation.LocaleState
 import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
