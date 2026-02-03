@@ -45,12 +45,16 @@ fun GridMapCanvas(
 
     var draggingObstacleNo by remember { mutableStateOf<Int?>(null) }
 
+    val latestObstacles by rememberUpdatedState(uiState.obstacles)
+    val latestEditMode by rememberUpdatedState(uiState.editMode)
+
     val grid = 20
     val majorEvery = 5
 
     Canvas(
         modifier = modifier
-            .pointerInput(uiState.editMode, uiState.obstacles) {
+            //, uiState.obstacles Dont recompute uiState.obstacles to allow for > 1 cell drag
+            .pointerInput(uiState.editMode) {
                 detectTapGestures { pos ->
                     val side = min(size.width, size.height)
                     val offsetX = (size.width - side) / 2f
@@ -73,10 +77,11 @@ fun GridMapCanvas(
                     }
                 }
             }
-            .pointerInput(uiState.editMode, uiState.obstacles) {
+            .pointerInput(uiState.editMode) {
                 detectDragGestures(
                     onDragStart = { pos ->
-                        if (uiState.editMode != MapEditMode.DragObstacle) return@detectDragGestures
+                        if (latestEditMode != MapEditMode.DragObstacle) return@detectDragGestures
+//                        if (uiState.editMode != MapEditMode.DragObstacle) return@detectDragGestures
 
                         val side = min(size.width, size.height)
                         val offsetX = (size.width - side) / 2f
@@ -97,7 +102,8 @@ fun GridMapCanvas(
                         onStartDragObstacle(hit.obstacleId)
                     },
                     onDrag = { change, _ ->
-                        if (uiState.editMode != MapEditMode.DragObstacle) return@detectDragGestures
+                        if (latestEditMode != MapEditMode.DragObstacle) return@detectDragGestures
+//                        if (uiState.editMode != MapEditMode.DragObstacle) return@detectDragGestures
                         val no = draggingObstacleNo ?: return@detectDragGestures
 
                         val side = min(size.width, size.height)
