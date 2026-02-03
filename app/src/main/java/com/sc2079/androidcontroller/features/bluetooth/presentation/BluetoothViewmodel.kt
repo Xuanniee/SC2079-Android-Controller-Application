@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.nio.charset.Charset
+import kotlinx.coroutines.flow.SharedFlow
 
 /**
  * Viewmodel intermediate layer between the UI Layer (Screens) & Data Layer (BT Classic Mgr)
@@ -94,6 +95,11 @@ class BluetoothViewModel(
                 SharingStarted.WhileSubscribed(5_000),
                 BluetoothUiState()
             )
+
+    /**
+     * Expose incoming Bluetooth bytes for parsing ROBOT messages
+     */
+    val incomingBtBytes: SharedFlow<ByteArray> = bluetoothManager.incomingBtBytes
 
     /**
      * Entry Point when ViewModel is created to start background takss

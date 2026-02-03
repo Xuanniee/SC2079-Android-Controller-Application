@@ -32,8 +32,7 @@ fun NavGraph(
         modifier = modifier
     ) {
         composable(Screen.Home.route) {
-            // TODO Maybe need replace with Bluetooth
-            HomeScreen()
+            HomeScreen(bluetoothViewModel = bluetoothViewModel)
         }
 
         composable(Screen.Bluetooth.route) {
