@@ -13,7 +13,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -21,6 +23,10 @@ import androidx.navigation.compose.rememberNavController
 import com.sc2079.androidcontroller.features.bluetooth.data.BluetoothClassicManager
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewmodelFactory
+import com.sc2079.androidcontroller.features.map.data.local.MapPreferencesDataSource
+import com.sc2079.androidcontroller.features.map.data.repository.MapRepositoryImpl
+import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
+import com.sc2079.androidcontroller.features.map.presentation.MapViewModelFactory
 import com.sc2079.androidcontroller.features.language.presentation.LocaleState
 import com.sc2079.androidcontroller.ui.AppScaffold
 import com.sc2079.androidcontroller.ui.screens.LoadingScreen
@@ -65,8 +71,20 @@ class MainActivity : AppCompatActivity() {
                     factory = BluetoothViewmodelFactory(bluetoothManager)
                 )
 
+                // Initialise the Map Repo and Viewmodel at Activity level as well
+                val context = LocalContext.current
+                val repo = remember {
+                    MapRepositoryImpl(MapPreferencesDataSource(context.applicationContext))
+                }
+                val mapViewModel: MapViewModel = viewModel(
+                    factory = MapViewModelFactory(repo)
+                )
+
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainContent(bluetoothViewModel = bluetoothViewModel)
+                    MainContent(
+                        bluetoothViewModel = bluetoothViewModel,
+                        mapViewModel = mapViewModel
+                    )
                 }
             }
         }
@@ -78,7 +96,8 @@ class MainActivity : AppCompatActivity() {
  */
 @Composable
 private fun MainContent(
-    bluetoothViewModel: BluetoothViewModel
+    bluetoothViewModel: BluetoothViewModel,
+    mapViewModel: MapViewModel
 ) {
     val isChangingLanguage by LocaleState.isChangingLanguage
 
@@ -92,7 +111,8 @@ private fun MainContent(
          */
         AppScaffold(
             navController = navController,
-            bluetoothViewModel = bluetoothViewModel
+            bluetoothViewModel = bluetoothViewModel,
+            mapViewModel = mapViewModel
         )
 
         if (isChangingLanguage) {

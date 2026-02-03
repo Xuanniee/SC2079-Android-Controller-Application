@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.launch
@@ -96,6 +97,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import com.sc2079.androidcontroller.R
+import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.map.data.local.MapPreferencesDataSource
 import com.sc2079.androidcontroller.features.map.data.repository.MapRepositoryImpl
 import com.sc2079.androidcontroller.features.map.domain.model.MapEditMode
@@ -124,6 +126,8 @@ import com.sc2079.androidcontroller.ui.components.home.ControlsCard
 import com.sc2079.androidcontroller.ui.components.home.MapCard
 import com.sc2079.androidcontroller.ui.components.map.MapActionsCard
 import com.sc2079.androidcontroller.ui.theme.CustomSuccess
+import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
+import com.sc2079.androidcontroller.features.map.presentation.RobotProtocol
 import com.sc2079.androidcontroller.ui.theme.SC2079AndroidControllerApplicationTheme
 
 /**
@@ -135,12 +139,10 @@ import com.sc2079.androidcontroller.ui.theme.SC2079AndroidControllerApplicationT
 @Composable
 fun HomeScreen(
     bluetoothViewModel: BluetoothViewModel,
+    mapViewModel: MapViewModel,
     modifier: Modifier = Modifier
 ) {
-    // Initialize MapViewModel
-    val context = LocalContext.current
-    val mapRepository = remember { MapRepositoryImpl(MapPreferencesDataSource(context.applicationContext)) }
-    val mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory(mapRepository))
+    // Collect the MapUiState as a Stateflow for UI changes
     val mapUiState by mapViewModel.uiState.collectAsState()
     
     // Get Bluetooth state
@@ -327,39 +329,44 @@ fun HomeScreen(
     
     // Map mode dropdown state
     val selectedMode = mapUiState.editMode
-    var previousMode by remember { mutableStateOf(selectedMode) }
-    var latestSelectedPosition by remember { mutableStateOf<GridPosition?>(null) }
+
+    /**
+     * TODO Appears to hold logic for confirming placement, going to comment this out
+     * as it is creating a lot of bugs
+     */
+    // var previousMode by remember { mutableStateOf(selectedMode) }
+    // var latestSelectedPosition by remember { mutableStateOf<GridPosition?>(null) }
     
-    // When mode changes, reset unconfirmed placements
-    LaunchedEffect(selectedMode) {
-        if (previousMode != selectedMode && latestSelectedPosition != null) {
-            // Mode changed - check if there's an unconfirmed placement at the latest selected position
-            val position = latestSelectedPosition!!
-            val x = position.column
-            val y = position.row
-            
-            // Check if there's an obstacle at this position (from PlaceObstacle mode)
-            if (previousMode == MapEditMode.PlaceObstacle) {
-                val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
-                obstacle?.let {
-                    mapViewModel.removeObstacleByNo(it.obstacleId)
-                }
-            }
-            
-            // Check if there's a robot at this position (from SetStart mode)
-            if (previousMode == MapEditMode.SetStart) {
-                mapUiState.robotPosition?.let { robot ->
-                    if (robot.x == x && robot.y == y) {
-                        mapViewModel.clearRobotPosition()
-                    }
-                }
-            }
-            
-            // Reset latest selected position
-            latestSelectedPosition = null
-        }
-        previousMode = selectedMode
-    }
+//    // When mode changes, reset unconfirmed placements
+//    LaunchedEffect(selectedMode) {
+//        if (previousMode != selectedMode && latestSelectedPosition != null) {
+//            // Mode changed - check if there's an unconfirmed placement at the latest selected position
+//            val position = latestSelectedPosition!!
+//            val x = position.column
+//            val y = position.row
+//
+//            // Check if there's an obstacle at this position (from PlaceObstacle mode)
+//            if (previousMode == MapEditMode.PlaceObstacle) {
+//                val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
+//                obstacle?.let {
+//                    mapViewModel.removeObstacleByNo(it.obstacleId)
+//                }
+//            }
+//
+//            // Check if there's a robot at this position (from SetStart mode)
+//            if (previousMode == MapEditMode.SetStart) {
+//                mapUiState.robotPosition?.let { robot ->
+//                    if (robot.x == x && robot.y == y) {
+//                        mapViewModel.clearRobotPosition()
+//                    }
+//                }
+//            }
+//
+//            // Reset latest selected position
+//            latestSelectedPosition = null
+//        }
+//        previousMode = selectedMode
+//    }
     
     // Save map dialog state
     var showSaveDialog by remember { mutableStateOf(false) }
@@ -376,10 +383,13 @@ fun HomeScreen(
     // Snackbar state
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
-    
-    // State to trigger chip splash effect when a cell is tapped
-    var chipSplashTrigger by remember { mutableStateOf(0) }
-    
+
+    /**
+     * TODO Commenting out all the chipSplashTrigger as causing bugs
+     */
+//    // State to trigger chip splash effect when a cell is tapped
+//    var chipSplashTrigger by remember { mutableStateOf(0) }
+//
     // Tab state for mobile screens (0 = Map Mode, 1 = Controller)
     var selectedTab by remember { mutableStateOf(0) }
     
@@ -416,27 +426,27 @@ fun HomeScreen(
                                 // GridPosition(row, column) -> (x=column, y=row)
                                 val x = position.column
                                 val y = position.row
-                                
-                                // Track latest selected position for mode change detection
-                                latestSelectedPosition = position
-                                
+
+//                                // TODO REmove for now Track latest selected position for mode change detection
+//                                latestSelectedPosition = position
+
                                 mapViewModel.onTapCell(x, y)
-                                
-                                // Trigger chip splash effect
-                                chipSplashTrigger++
+
+//                                // Trigger chip splash effect
+//                                chipSplashTrigger++
                             },
                             onCellRemove = { position ->
                                 // Convert GridPosition (row, column) to (x, y) for MapViewModel
                                 // GridPosition(row, column) -> (x=column, y=row)
                                 val x = position.column
                                 val y = position.row
-                                
+
                                 // Remove obstacle at this position if any
                                 val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
                                 obstacle?.let {
                                     mapViewModel.removeObstacleByNo(it.obstacleId)
                                 }
-                                
+
                                 // Remove robot if at this position
                                 mapUiState.robotPosition?.let { robot ->
                                     if (robot.x == x && robot.y == y) {
@@ -484,7 +494,7 @@ fun HomeScreen(
                                                 },
                                                 onSave = { showSaveDialog = true },
                                                 onLoad = { showLoadDialog = true },
-                                                chipSplashTrigger = chipSplashTrigger,
+//                                                chipSplashTrigger = chipSplashTrigger,
                                                 hideButtonText = isLandscape && isMobile,
                                                 modifier = Modifier.fillMaxSize()
                                             )
@@ -524,7 +534,7 @@ fun HomeScreen(
                                     },
                                     onSave = { showSaveDialog = true },
                                     onLoad = { showLoadDialog = true },
-                                    chipSplashTrigger = chipSplashTrigger,
+//                                    chipSplashTrigger = chipSplashTrigger,
                                     hideButtonText = isLandscape && isMobile
                                 )
                                 
@@ -578,7 +588,7 @@ fun HomeScreen(
                                                 },
                                                 onSave = { showSaveDialog = true },
                                                 onLoad = { showLoadDialog = true },
-                                                chipSplashTrigger = chipSplashTrigger,
+//                                                chipSplashTrigger = chipSplashTrigger,
                                                 hideButtonText = isLandscape && isMobile,
                                                 modifier = Modifier.fillMaxSize()
                                             )
@@ -618,7 +628,7 @@ fun HomeScreen(
                                     },
                                     onSave = { showSaveDialog = true },
                                     onLoad = { showLoadDialog = true },
-                                    chipSplashTrigger = chipSplashTrigger,
+//                                    chipSplashTrigger = chipSplashTrigger,
                                     hideButtonText = isLandscape && isMobile
                                 )
                                 
@@ -646,27 +656,27 @@ fun HomeScreen(
                                 // GridPosition(row, column) -> (x=column, y=row)
                                 val x = position.column
                                 val y = position.row
-                                
-                                // Track latest selected position for mode change detection
-                                latestSelectedPosition = position
-                                
+
+//                                // Track latest selected position for mode change detection
+//                                latestSelectedPosition = position
+
                                 mapViewModel.onTapCell(x, y)
-                                
-                                // Trigger chip splash effect
-                                chipSplashTrigger++
+
+//                                // Trigger chip splash effect
+//                                chipSplashTrigger++
                             },
                             onCellRemove = { position ->
                                 // Convert GridPosition (row, column) to (x, y) for MapViewModel
                                 // GridPosition(row, column) -> (x=column, y=row)
                                 val x = position.column
                                 val y = position.row
-                                
+
                                 // Remove obstacle at this position if any
                                 val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
                                 obstacle?.let {
                                     mapViewModel.removeObstacleByNo(it.obstacleId)
                                 }
-                                
+
                                 // Remove robot if at this position
                                 mapUiState.robotPosition?.let { robot ->
                                     if (robot.x == x && robot.y == y) {
@@ -696,27 +706,27 @@ fun HomeScreen(
                             // GridPosition(row, column) -> (x=column, y=row)
                             val x = position.column
                             val y = position.row
-                            
-                            // Track latest selected position for mode change detection
-                            latestSelectedPosition = position
-                            
+
+//                            // Track latest selected position for mode change detection
+//                            latestSelectedPosition = position
+
                             mapViewModel.onTapCell(x, y)
-                            
-                            // Trigger chip splash effect
-                            chipSplashTrigger++
+
+//                            // Trigger chip splash effect
+//                            chipSplashTrigger++
                         },
                         onCellRemove = { position ->
                             // Convert GridPosition (row, column) to (x, y) for MapViewModel
                             // GridPosition(row, column) -> (x=column, y=row)
                             val x = position.column
                             val y = position.row
-                            
+
                             // Remove obstacle at this position if any
                             val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
                             obstacle?.let {
                                 mapViewModel.removeObstacleByNo(it.obstacleId)
                             }
-                            
+
                             // Remove robot if at this position
                             mapUiState.robotPosition?.let { robot ->
                                 if (robot.x == x && robot.y == y) {
@@ -753,7 +763,7 @@ fun HomeScreen(
                                         },
                                         onSave = { showSaveDialog = true },
                                         onLoad = { showLoadDialog = true },
-                                        chipSplashTrigger = chipSplashTrigger,
+//                                        chipSplashTrigger = chipSplashTrigger,
                                         hideButtonText = isLandscape && isMobile,
                                         modifier = Modifier.fillMaxWidth()
                                     )
@@ -790,7 +800,7 @@ fun HomeScreen(
                                     },
                                     onSave = { showSaveDialog = true },
                                     onLoad = { showLoadDialog = true },
-                                    chipSplashTrigger = chipSplashTrigger,
+//                                    chipSplashTrigger = chipSplashTrigger,
                                     hideButtonText = isLandscape && isMobile,
                                     modifier = Modifier.weight(1f)
                                 )
@@ -825,7 +835,7 @@ fun HomeScreen(
                                     },
                                     onSave = { showSaveDialog = true },
                                     onLoad = { showLoadDialog = true },
-                                    chipSplashTrigger = chipSplashTrigger,
+//                                    chipSplashTrigger = chipSplashTrigger,
                                     hideButtonText = isLandscape && isMobile,
                                     modifier = Modifier.weight(1f)
                                 )

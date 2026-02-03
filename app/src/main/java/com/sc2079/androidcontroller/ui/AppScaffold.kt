@@ -78,6 +78,7 @@ import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothVie
 import com.sc2079.androidcontroller.features.controller.domain.ControlState
 import com.sc2079.androidcontroller.features.language.presentation.AppLanguage
 import com.sc2079.androidcontroller.features.language.presentation.LocaleState
+import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
 import com.sc2079.androidcontroller.features.tts.rememberTextToSpeechManager
 import com.sc2079.androidcontroller.navigation.NavGraph
 import com.sc2079.androidcontroller.navigation.Screen
@@ -103,6 +104,7 @@ data class NavigationItem(
 fun AppScaffold(
     navController: NavHostController,
     bluetoothViewModel: BluetoothViewModel,
+    mapViewModel: MapViewModel,
     modifier: Modifier = Modifier
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -323,7 +325,8 @@ fun AppScaffold(
             NavGraph(
                 navController = navController,
                 modifier = Modifier.padding(paddingValues),
-                bluetoothViewModel = bluetoothViewModel
+                bluetoothViewModel = bluetoothViewModel,
+                mapViewModel = mapViewModel,
             )
 
         }

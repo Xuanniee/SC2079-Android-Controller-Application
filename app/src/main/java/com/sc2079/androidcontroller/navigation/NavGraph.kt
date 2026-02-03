@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothChatScreen
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothSetupScreen
+import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
 import com.sc2079.androidcontroller.features.map.ui.MappingHomeScreen
 import com.sc2079.androidcontroller.ui.screens.HomeScreen
 
@@ -23,6 +24,7 @@ import com.sc2079.androidcontroller.ui.screens.HomeScreen
 fun NavGraph(
     navController: NavHostController,
     bluetoothViewModel: BluetoothViewModel,
+    mapViewModel: MapViewModel,
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route
 ) {
@@ -32,7 +34,11 @@ fun NavGraph(
         modifier = modifier
     ) {
         composable(Screen.Home.route) {
-            HomeScreen(bluetoothViewModel = bluetoothViewModel)
+            // TODO Maybe need replace with Bluetooth
+            HomeScreen(
+                mapViewModel = mapViewModel,
+                bluetoothViewModel = bluetoothViewModel
+            )
         }
 
         composable(Screen.Bluetooth.route) {
@@ -40,7 +46,9 @@ fun NavGraph(
         }
 
         composable(Screen.Map.route) {
-            MappingHomeScreen(bluetoothViewModel = bluetoothViewModel)
+            MappingHomeScreen(
+                bluetoothViewModel = bluetoothViewModel, mapViewModel = mapViewModel
+            )
         }
     }
 }
