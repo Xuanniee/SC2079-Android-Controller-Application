@@ -50,5 +50,29 @@
     <string name="loading">載入中…</string>
     <string name="error_title">發生錯誤</string>
     <string name="error_message">發生意外錯誤，請重試。</string>
+    <string name="map">地圖</string>
+    <string name="obstacle_robot_placement">障礙物和機器人放置</string>
+    <string name="saved_maps">已儲存的地圖</string>
+    
+    <!-- Map Actions -->
+    <string name="reset_map">重置地圖</string>
+    <string name="save_map">儲存地圖</string>
+    <string name="load_map">載入地圖</string>
+    <string name="map_mode">地圖模式</string>
+    <string name="cursor">游標</string>
+    <string name="set_start">設定起點</string>
+    <string name="place_obstacle">放置障礙物</string>
+    <string name="drag_obstacle">拖曳障礙物</string>
+    <string name="change_face">改變朝向</string>
+    <string name="double_tap_confirmation">請在地圖上雙擊方框以確認您的選擇。</string>
+    
+    <!-- Dialogs -->
+    <string name="save_map_title">儲存地圖</string>
+    <string name="save_map_name">名稱</string>
+    <string name="load_map_title">載入地圖</string>
+    <string name="no_saved_maps">沒有可用的已儲存地圖。</string>
+    <string name="reset_map_title">重置地圖</string>
+    <string name="reset_map_message">您確定要重置地圖嗎？此操作無法復原。</string>
+    <string name="use_map">使用地圖</string>
 </resources>
 

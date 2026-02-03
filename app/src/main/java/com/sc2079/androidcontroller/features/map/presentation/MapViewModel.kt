@@ -89,6 +89,11 @@ class MapViewModel(
         return existing
     }
 
+    fun clearRobotPosition() {
+        snapshot = snapshot.copy(robotPosition = null)
+        publish()
+    }
+
     fun setObstacleFace(obstacleNo: Int, face: FaceDir): Obstacle? {
         val before = mapSnapshot
         mapSnapshot = setObstacleFace(mapSnapshot, obstacleNo, face)

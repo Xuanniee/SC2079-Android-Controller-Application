@@ -29,6 +29,8 @@ class BluetoothClassicManager(
     private val controllerAppContext: Context,
     private val bluetoothScope: CoroutineScope
 ) {
+    // Vibration manager for haptic feedback
+    private val vibrationManager = com.sc2079.androidcontroller.features.vibration.VibrationManager(controllerAppContext)
     /**
      * Variables, Stateflows for the Bluetooth Module
      */
@@ -69,6 +71,8 @@ class BluetoothClassicManager(
     private var readerJob: Job? = null
     // Coroutine job as server to wait for robot to connect
     private var acceptBluetoothJob: Job? = null
+    // Flag to track if disconnect is user-initiated
+    private var isUserInitiatedDisconnect = false
 
     /**
      * Permissions
@@ -190,7 +194,7 @@ class BluetoothClassicManager(
      */
     fun startBluetoothServer(serviceName: String = "SC2079_BT") {
         // Ensure only 1 BT Server, kill off any old connections
-        disconnectBluetooth()
+        disconnectBluetooth(userInitiated = true) // User-initiated when starting server
         stopBluetoothServer()
 
         // Ensure BT Hardware exists, enabled and has permissions
@@ -236,11 +240,11 @@ class BluetoothClassicManager(
             } catch (e: SecurityException) {
                 // BT Permission error
                 _bluetoothConnState.value = BluetoothConnState.Error("Permission revoked")
-                disconnectBluetooth()
+                disconnectBluetooth(userInitiated = false)
             } catch (e: Exception) {
                 // Any Error
                 _bluetoothConnState.value = BluetoothConnState.Error("Server failed: ${e.message}")
-                disconnectBluetooth()
+                disconnectBluetooth(userInitiated = false)
             }
         }
     }
@@ -268,7 +272,7 @@ class BluetoothClassicManager(
     // Attempt to connect to a server via BT
     fun connectBluetooth(device: BluetoothDevice) {
         // Reset to Clean state
-        disconnectBluetooth()
+        disconnectBluetooth(userInitiated = true) // User-initiated when connecting to new device
         stopBluetoothServer()
 
         // Ensure BT Hardware exists, enabled and has permissions
@@ -310,16 +314,21 @@ class BluetoothClassicManager(
                 startReaderLoop()
             } catch (e: SecurityException) {
                 _bluetoothConnState.value = BluetoothConnState.Error("Permission revoked")
-                disconnectBluetooth()
+                disconnectBluetooth(userInitiated = false)
             } catch (e: Exception) {
                 _bluetoothConnState.value = BluetoothConnState.Error("Connect failed: ${e.message}")
-                disconnectBluetooth()
+                disconnectBluetooth(userInitiated = false)
             }
         }
     }
 
     // Attempt to disconnect to a server via BT
-    fun disconnectBluetooth() {
+    // @param userInitiated Set to true if user manually disconnected, false if unexpected disconnection
+    fun disconnectBluetooth(userInitiated: Boolean = false) {
+        // Store whether this is user-initiated before disconnecting
+        val wasConnected = _bluetoothConnState.value is BluetoothConnState.Connected
+        isUserInitiatedDisconnect = userInitiated
+
         // Stop listening for any server if we are
         stopBluetoothServer()
 
@@ -345,7 +354,35 @@ class BluetoothClassicManager(
         bluetoothSocket = null
 
         // Update the UiState to be disconnceted
+        val previousState = _bluetoothConnState.value
         _bluetoothConnState.value = BluetoothConnState.Disconnected
+
+        // Trigger vibration if this was an unexpected disconnection (was connected but not user-initiated)
+        if (wasConnected && !userInitiated) {
+            onUnexpectedDisconnection()
+        }
+    }
+
+    /**
+     * Callback for unexpected disconnection - can be overridden or used with a listener
+     */
+    private var unexpectedDisconnectionCallback: (() -> Unit)? = null
+
+    /**
+     * Set callback for unexpected disconnection events
+     */
+    fun setUnexpectedDisconnectionCallback(callback: (() -> Unit)?) {
+        unexpectedDisconnectionCallback = callback
+    }
+
+    /**
+     * Handle unexpected disconnection
+     */
+    private fun onUnexpectedDisconnection() {
+        // Trigger vibration for unexpected disconnection
+        vibrationManager.vibrateForDisconnection()
+        // Call any registered callback
+        unexpectedDisconnectionCallback?.invoke()
     }
 
     /**
@@ -379,8 +416,8 @@ class BluetoothClassicManager(
                 }
             }
 
-            // Disconnect the BT Connection
-            disconnectBluetooth()
+            // Disconnect the BT Connection (unexpected - not user-initiated)
+            disconnectBluetooth(userInitiated = false)
         }
     }
 
@@ -395,7 +432,8 @@ class BluetoothClassicManager(
                 btOutputStream.write(bytes)
                 btOutputStream.flush()
             } catch (_: Exception) {
-                disconnectBluetooth()
+                // Unexpected disconnection during write
+                disconnectBluetooth(userInitiated = false)
             }
         }
     }

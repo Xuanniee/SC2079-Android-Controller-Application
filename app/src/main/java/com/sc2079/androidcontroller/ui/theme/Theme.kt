@@ -54,7 +54,7 @@ private val LightColorScheme = lightColorScheme(
     
     surface = White,
     onSurface = DarkText,
-    surfaceVariant = LightSecondary,
+    surfaceVariant = LightTertiary,
     onSurfaceVariant = DarkText,
     
     outline = SlateGray300,

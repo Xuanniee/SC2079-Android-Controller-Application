@@ -7,6 +7,8 @@
     <string name="nav_navigation">Navigation</string>
     <string name="nav_theme">Theme</string>
     <string name="nav_language">Language</string>
+    <string name="nav_control">Control</string>
+    <string name="right_handed_control">Right-handed Control</string>
     
     <!-- Language -->
     <string name="lang_system">System</string>
@@ -24,6 +26,8 @@
     <string name="device_connected">DEVICE NAME: CONNECTED</string>
     <string name="device_disconnected">DEVICE: DISCONNECTED</string>
     <string name="controls">Controls</string>
+    <string name="map_mode_tab">Map Mode</string>
+    <string name="controller_tab">Controller</string>
     <string name="activity_status">Activity Status</string>
     <string name="status_subhead">Subhead</string>
     <string name="action">Action</string>
@@ -53,4 +57,26 @@
     <string name="error_message">An unexpected error occurred. Please try again.</string>
     <string name="map">Map</string>
     <string name="obstacle_robot_placement"><![CDATA[Obstacle & Robot Placement]]></string>
+    <string name="saved_maps">Saved Maps</string>
+    
+    <!-- Map Actions -->
+    <string name="reset_map">Reset Map</string>
+    <string name="save_map">Save Map</string>
+    <string name="load_map">Load Map</string>
+    <string name="map_mode">Map Mode</string>
+    <string name="cursor">Cursor</string>
+    <string name="set_start">Set Start</string>
+    <string name="place_obstacle">Place Obstacle</string>
+    <string name="drag_obstacle">Drag Obstacle</string>
+    <string name="change_face">Change Face</string>
+    <string name="double_tap_confirmation">Kindly double tap on the box in the map to confirm your selection.</string>
+    
+    <!-- Dialogs -->
+    <string name="save_map_title">Save Map</string>
+    <string name="save_map_name">Name</string>
+    <string name="load_map_title">Load Map</string>
+    <string name="no_saved_maps">No saved maps available.</string>
+    <string name="reset_map_title">Reset Map</string>
+    <string name="reset_map_message">Are you sure you want to reset the map? This action cannot be undone.</string>
+    <string name="use_map">Use Map</string>
 </resources>

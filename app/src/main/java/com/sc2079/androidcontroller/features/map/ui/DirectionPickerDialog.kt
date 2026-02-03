@@ -18,25 +18,53 @@ fun DirectionPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        containerColor = MaterialTheme.colorScheme.surface,
+        title = { 
+            Text(
+                title,
+                color = MaterialTheme.colorScheme.onSurface
+            ) 
+        },
         text = {
             Column {
                 FaceDir.entries.forEach { dir ->
                     Row {
                         RadioButton(
                             selected = selected == dir,
-                            onClick = { selected = dir }
+                            onClick = { selected = dir },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = MaterialTheme.colorScheme.primary
+                            )
                         )
-                        Text(dir.name)
+                        Text(
+                            dir.name,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(selected) }) { Text("Save") }
+            Button(
+                onClick = { onConfirm(selected) },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
+                )
+            ) { 
+                Text("Save") 
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary
+                )
+            ) { 
+                Text("Cancel") 
+            }
         }
     )
 }

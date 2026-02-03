@@ -51,5 +51,29 @@
     <string name="changing_language">正在更改语言…</string>
     <string name="error_title">出现错误</string>
     <string name="error_message">发生意外错误，请重试。</string>
+    <string name="map">地图</string>
+    <string name="obstacle_robot_placement">障碍物和机器人放置</string>
+    <string name="saved_maps">已保存的地图</string>
+    
+    <!-- Map Actions -->
+    <string name="reset_map">重置地图</string>
+    <string name="save_map">保存地图</string>
+    <string name="load_map">加载地图</string>
+    <string name="map_mode">地图模式</string>
+    <string name="cursor">光标</string>
+    <string name="set_start">设置起点</string>
+    <string name="place_obstacle">放置障碍物</string>
+    <string name="drag_obstacle">拖拽障碍物</string>
+    <string name="change_face">改变朝向</string>
+    <string name="double_tap_confirmation">请在地图上双击方框以确认您的选择。</string>
+    
+    <!-- Dialogs -->
+    <string name="save_map_title">保存地图</string>
+    <string name="save_map_name">名称</string>
+    <string name="load_map_title">加载地图</string>
+    <string name="no_saved_maps">没有可用的已保存地图。</string>
+    <string name="reset_map_title">重置地图</string>
+    <string name="reset_map_message">您确定要重置地图吗？此操作无法撤销。</string>
+    <string name="use_map">使用地图</string>
 </resources>
 
