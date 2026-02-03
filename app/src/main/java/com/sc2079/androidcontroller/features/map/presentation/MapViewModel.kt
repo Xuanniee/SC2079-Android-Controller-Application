@@ -90,7 +90,7 @@ class MapViewModel(
     }
 
     fun clearRobotPosition() {
-        snapshot = snapshot.copy(robotPosition = null)
+        mapSnapshot = mapSnapshot.copy(robotPosition = null)
         publish()
     }
 

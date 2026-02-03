@@ -40,6 +40,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.graphics.Paint
+import androidx.compose.foundation.layout.BoxWithConstraints
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.ui.theme.SC2079AndroidControllerApplicationTheme
 import kotlinx.coroutines.delay
@@ -95,43 +96,48 @@ enum class CellType {
 @Composable
 fun MapGrid(
     modifier: Modifier = Modifier,
-    columns: Int = 15,
-    rows: Int = 21,
+    columns: Int = 20,
+    rows: Int = 20,
     cellStates: Map<GridPosition, CellState> = emptyMap(),
     onCellClick: (GridPosition) -> Unit = {},
     onCellRemove: (GridPosition) -> Unit = {}
 ) {
     // Track the latest selected position to ensure only one box shows animation
     var latestSelectedPosition by remember { mutableStateOf<GridPosition?>(null) }
-    
-    Column(
+
+    BoxWithConstraints(
         modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        for (row in 0 until rows) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                for (column in 0 until columns) {
-                    val position = GridPosition(row, column)
-                    val cellState = cellStates[position] ?: CellState(position)
-                    val isLatestSelected = latestSelectedPosition == position
-                    
-                    MapBox(
-                        cellState = cellState,
-                        isLatestSelected = isLatestSelected,
-                        onClick = { 
-                            latestSelectedPosition = position
-                            onCellClick(position) 
-                        },
-                        onRemove = {
-                            onCellRemove(position)
-                        },
-                        modifier = Modifier.weight(1f)
-                    )
+        val cellSize = minOf(maxWidth / columns, maxHeight / rows)
+        Column(
+            modifier = modifier
+                .fillMaxWidth(),
+//            .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            for (row in 0 until rows) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    for (column in 0 until columns) {
+                        val position = GridPosition(row, column)
+                        val cellState = cellStates[position] ?: CellState(position)
+                        val isLatestSelected = latestSelectedPosition == position
+
+                        MapBox(
+                            cellState = cellState,
+                            isLatestSelected = isLatestSelected,
+                            onClick = {
+                                latestSelectedPosition = position
+                                onCellClick(position)
+                            },
+                            onRemove = {
+                                onCellRemove(position)
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
@@ -153,13 +159,13 @@ private fun MapBox(
 ) {
     val cornerRadius = 4.dp
     val shape = RoundedCornerShape(cornerRadius)
-    
+
     // Animation state for flashing red radius - only allowed if this is the latest selected
     var showFlashAnimation by remember { mutableStateOf(false) }
-    
+
     // Track if this cell has a pending placement (obstacle/robot placed but not confirmed)
     var hasPendingPlacement by remember { mutableStateOf(false) }
-    
+
     // Clear animation if this box is no longer the latest selected
     LaunchedEffect(isLatestSelected) {
         if (!isLatestSelected) {
@@ -169,15 +175,15 @@ private fun MapBox(
         }
     }
     var isLongPressing by remember { mutableStateOf(false) }
-    var confirmedState by remember(cellState.position) { 
-        mutableStateOf(cellState.isConfirmed) 
+    var confirmedState by remember(cellState.position) {
+        mutableStateOf(cellState.isConfirmed)
     }
-    
+
     // Tap detection for double and triple taps
     var lastTapTime by remember { mutableStateOf(0L) }
     var tapCount by remember { mutableStateOf(0) }
     val tapTimeout = 300L // 300ms window for tap sequences
-    
+
     // Update confirmed state when cellState changes
     LaunchedEffect(cellState.isConfirmed) {
         confirmedState = cellState.isConfirmed
@@ -186,28 +192,31 @@ private fun MapBox(
             hasPendingPlacement = false
         }
     }
-    
+
     // Reset pending placement when animation stops (unless confirmed)
     LaunchedEffect(showFlashAnimation, confirmedState) {
         if (!showFlashAnimation && !confirmedState) {
             hasPendingPlacement = false
         }
     }
-    
-    // Handle flash animation timeout - changed to 10 seconds for auto-cancel
-    // If timeout occurs and placement is not confirmed, remove it
-    LaunchedEffect(showFlashAnimation) {
-        if (showFlashAnimation && !confirmedState) {
-            delay(10000) // 10 seconds
-            showFlashAnimation = false
-            // If there's a pending placement that wasn't confirmed, remove it
-            if (hasPendingPlacement && !confirmedState) {
-                onRemove()
-                hasPendingPlacement = false
-            }
-        }
-    }
-    
+
+    /**
+     * TODO Commenting this out to stop auto remove logic
+     */
+//    // Handle flash animation timeout - changed to 10 seconds for auto-cancel
+//    // If timeout occurs and placement is not confirmed, remove it
+//    LaunchedEffect(showFlashAnimation) {
+//        if (showFlashAnimation && !confirmedState) {
+//            delay(10000) // 10 seconds
+//            showFlashAnimation = false
+//            // If there's a pending placement that wasn't confirmed, remove it
+//            if (hasPendingPlacement && !confirmedState) {
+//                onRemove()
+//                hasPendingPlacement = false
+//            }
+//        }
+//    }
+
     // Handle long press reset - wait 3 seconds
     LaunchedEffect(isLongPressing) {
         if (isLongPressing) {
@@ -220,7 +229,7 @@ private fun MapBox(
             }
         }
     }
-    
+
     // Looping border animation - snake-like movement
     val infiniteTransition = rememberInfiniteTransition(label = "looping_border")
     val borderProgress by infiniteTransition.animateFloat(
@@ -232,25 +241,29 @@ private fun MapBox(
         ),
         label = "border_progress"
     )
-    
+
     val backgroundColor = when {
         cellState.isSelected -> MaterialTheme.colorScheme.primaryContainer
         cellState.cellType == CellType.OBSTACLE -> Color(0xFFB39DDB) // Purple for obstacles
         cellState.cellType == CellType.ROBOT -> Color(0xFF80CBC4) // Teal for robot
         else -> getCellColor(cellState.cellType)
     }
-    
+
+    /**
+     * TODO Stop animated border for now as causing bugs
+     */
     // Show animated border only if this is the latest selected box and not confirmed
     // Show animation if this box is the latest selected and flash animation is active
-    val showAnimatedBorder = !confirmedState && isLatestSelected && showFlashAnimation
+//    val showAnimatedBorder = !confirmedState && isLatestSelected && showFlashAnimation
+    val showAnimatedBorder = false
     val staticBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
     val errorColor = MaterialTheme.colorScheme.error // Read error color in composable context
-    
+
     val density = LocalDensity.current
     val textSizePx = with(density) { 11.sp.toPx() }
     val strokeWidth = with(density) { 5.dp.toPx() } // Increased from 3.dp to 5.dp for more visible border
     val cornerRadiusPx = with(density) { cornerRadius.toPx() }
-    
+
     Box(
         modifier = modifier
             .wrapContentSize()
@@ -265,7 +278,7 @@ private fun MapBox(
                     if (showAnimatedBorder) {
                         Modifier.drawWithContent {
                             drawContent() // Draws the background/content of the box
-                            
+
                             // Define the rounded rectangle path
                             val path = Path().apply {
                                 val rect = Rect(Offset.Zero, size)
@@ -310,16 +323,16 @@ private fun MapBox(
                                 )
                                 close()
                             }
-                            
+
                             val pathMeasure = PathMeasure()
                             pathMeasure.setPath(path, false)
-                            
+
                             val totalLength = pathMeasure.length
                             val snakeLength = totalLength * 0.8f // 80% coverage
                             val startDistance = borderProgress * totalLength
-                            
+
                             val destinationPath = androidx.compose.ui.graphics.Path()
-                            
+
                             // Extract the segment and handle the wrap-around
                             if (startDistance + snakeLength <= totalLength) {
                                 // Simple case: segment fits within the path length
@@ -333,7 +346,7 @@ private fun MapBox(
                                 pathMeasure.getSegment(startDistance, totalLength, destinationPath)
                                 pathMeasure.getSegment(0f, (startDistance + snakeLength) % totalLength, destinationPath)
                             }
-                            
+
                             // Draw the animated path using theme error color
                             drawPath(
                                 path = destinationPath,
@@ -356,48 +369,53 @@ private fun MapBox(
                 .pointerInput(cellState.position) {
                 detectTapGestures(
                     onTap = {
-                        // Handle single tap, double tap, or triple tap
-                        val currentTime = System.currentTimeMillis()
-                        val timeSinceLastTap = currentTime - lastTapTime
-                        
-                        if (timeSinceLastTap < tapTimeout) {
-                            // Tap within timeout window - increment count
-                            tapCount++
-                        } else {
-                            // New tap sequence - reset count
-                            tapCount = 1
-                        }
-                        
-                        when (tapCount) {
-                            1 -> {
-                                // Single tap - show flash animation (will be cleared if not latest selected)
-                                if (!confirmedState) {
-                                    showFlashAnimation = true
-                                    // Check if cell was empty before tap - if so, mark as pending placement
-                                    // This will be checked after onClick() potentially places something
-                                    if (cellState.cellType == CellType.EMPTY) {
-                                        hasPendingPlacement = true
-                                    }
-                                }
-                                onClick()
-                            }
-                            2 -> {
-                                // Double tap - confirm the state
-                                confirmedState = true
-                                showFlashAnimation = false
-                                hasPendingPlacement = false // Clear pending placement on confirmation
-                                onClick()
-                            }
-                            3 -> {
-                                // Triple tap - reset the state and remove cell content
-                                confirmedState = false
-                                showFlashAnimation = false
-                                tapCount = 0 // Reset count after triple tap
-                                onRemove()
-                            }
-                        }
-                        
-                        lastTapTime = currentTime
+                        onClick()
+
+                        /**
+                         * TODO Temporary remove the logic to do the 3 taps as is causing bugs
+                         */
+//                        // Handle single tap, double tap, or triple tap
+//                        val currentTime = System.currentTimeMillis()
+//                        val timeSinceLastTap = currentTime - lastTapTime
+//
+//                        if (timeSinceLastTap < tapTimeout) {
+//                            // Tap within timeout window - increment count
+//                            tapCount++
+//                        } else {
+//                            // New tap sequence - reset count
+//                            tapCount = 1
+//                        }
+//
+//                        when (tapCount) {
+//                            1 -> {
+//                                // Single tap - show flash animation (will be cleared if not latest selected)
+//                                if (!confirmedState) {
+//                                    showFlashAnimation = true
+//                                    // Check if cell was empty before tap - if so, mark as pending placement
+//                                    // This will be checked after onClick() potentially places something
+//                                    if (cellState.cellType == CellType.EMPTY) {
+//                                        hasPendingPlacement = true
+//                                    }
+//                                }
+//                                onClick()
+//                            }
+//                            2 -> {
+//                                // Double tap - confirm the state
+//                                confirmedState = true
+//                                showFlashAnimation = false
+//                                hasPendingPlacement = false // Clear pending placement on confirmation
+//                                onClick()
+//                            }
+//                            3 -> {
+//                                // Triple tap - reset the state and remove cell content
+//                                confirmedState = false
+//                                showFlashAnimation = false
+//                                tapCount = 0 // Reset count after triple tap
+//                                onRemove()
+//                            }
+//                        }
+
+//                        lastTapTime = currentTime
                     },
                     onPress = {
                         // Start long press detection
@@ -405,13 +423,13 @@ private fun MapBox(
                         if (!confirmedState) {
                             showFlashAnimation = true
                         }
-                        
+
                         // Wait a short time to distinguish tap from long press
                         val isQuickTap = withTimeoutOrNull(150) {
                             tryAwaitRelease()
                             true
                         } == true
-                        
+
                         if (isQuickTap) {
                             // It was a quick tap, flash animation already started
                             // Don't call onClick here as onTap will handle it
@@ -441,7 +459,7 @@ private fun MapBox(
             if (cellState.cellType == CellType.OBSTACLE && cellState.obstacleId != null) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val rect = Rect(0f, 0f, size.width, size.height)
-                    
+
                     // Draw face direction stripe
                     cellState.obstacleFaceDir?.let { faceDir ->
                         val stripe = faceStripe(rect, faceDir)
@@ -451,7 +469,7 @@ private fun MapBox(
                             size = stripe.size
                         )
                     }
-                    
+
                     // Draw text labels
                     drawContext.canvas.nativeCanvas.apply {
                         val paint = Paint().apply {
@@ -461,11 +479,11 @@ private fun MapBox(
                         }
                         val centerX = rect.center.x
                         val centerY = rect.center.y
-                        
+
                         // Draw obstacle ID
                         paint.color = android.graphics.Color.BLACK
                         drawText("O${cellState.obstacleId}", centerX, centerY - paint.textSize * 0.1f, paint)
-                        
+
                         // Draw target ID if present
                         cellState.displayedTargetId?.let { targetId ->
                             paint.color = android.graphics.Color.DKGRAY
@@ -474,7 +492,7 @@ private fun MapBox(
                     }
                 }
             }
-            
+
             // Draw robot visuals (teal background, direction marker)
             if (cellState.cellType == CellType.ROBOT && cellState.robotFaceDir != null) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
@@ -486,7 +504,7 @@ private fun MapBox(
                         FaceDir.LEFT -> Offset(center.x - d, center.y)
                         FaceDir.RIGHT -> Offset(center.x + d, center.y)
                     }
-                    
+
                     drawCircle(
                         color = Color(0xFF004D40), // Dark teal for direction marker
                         radius = size.minDimension * 0.08f,
@@ -494,7 +512,7 @@ private fun MapBox(
                     )
                 }
             }
-            
+
         }
     }
 }
@@ -539,7 +557,7 @@ fun MapGridPreview() {
             GridPosition(3, 4) to CellState(GridPosition(3, 4), cellType = CellType.OBSTACLE),
             GridPosition(4, 3) to CellState(GridPosition(4, 3), cellType = CellType.OBSTACLE),
         )
-        
+
         MapGrid(
             cellStates = sampleStates,
             onCellClick = { position ->
@@ -556,7 +574,7 @@ fun MapGridWithSelectionPreview() {
         val sampleStates = mapOf(
             GridPosition(5, 7) to CellState(GridPosition(5, 7), isSelected = true),
         )
-        
+
         MapGrid(
             cellStates = sampleStates,
             onCellClick = { position ->
