@@ -112,7 +112,6 @@ import com.sc2079.androidcontroller.ui.components.dialogs.LoadMapDialog
 import com.sc2079.androidcontroller.ui.components.dialogs.ResetMapDialog
 import com.sc2079.androidcontroller.ui.components.dialogs.SaveMapDialog
 import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
-import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.controller.domain.ControlState
 import com.sc2079.androidcontroller.features.controller.domain.model.ActivityStatus
 import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
@@ -126,7 +125,6 @@ import com.sc2079.androidcontroller.ui.components.home.ControlsCard
 import com.sc2079.androidcontroller.ui.components.home.MapCard
 import com.sc2079.androidcontroller.ui.components.map.MapActionsCard
 import com.sc2079.androidcontroller.ui.theme.CustomSuccess
-import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.features.map.presentation.RobotProtocol
 import com.sc2079.androidcontroller.ui.theme.SC2079AndroidControllerApplicationTheme
 
