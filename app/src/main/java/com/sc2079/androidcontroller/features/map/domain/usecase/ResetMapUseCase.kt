@@ -10,6 +10,6 @@ class ResetMapUseCase {
         // Remove robot, reset obstacleId, and empty the obstacles
         robotPosition = null,
         obstacles = emptyList(),
-         nextObstacleId = 1
+//         nextObstacleId = 1
     )
 }

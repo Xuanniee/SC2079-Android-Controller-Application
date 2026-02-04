@@ -21,7 +21,7 @@ sealed class RobotInboundEvent {
      * obstacleNo: which obstacle index/number the target refers to
      * targetId: some identifier for the detected target (e.g., image ID / label)
      */
-    data class TargetEvent(val obstacleNo: Int, val targetId: String) : RobotInboundEvent()
+    data class TargetEvent(val obstacleId: Int, val targetId: Int?) : RobotInboundEvent()
 
     /**
      * General status / debug / state message from the robot.
@@ -132,11 +132,11 @@ object RobotMessageParser {
                     // Expect: ["TARGET", obstacleNo, targetId]
                     if (parts.size >= 3) {
                         val obNo = parts[1].toIntOrNull()
-                        val targetId = parts[2]
+                        val targetId = parts[2].toIntOrNull()
 
                         // Only emit if obstacle number is valid int
                         if (obNo != null) {
-                            robotEventsArr += RobotInboundEvent.TargetEvent(obNo, targetId)
+                            robotEventsArr += RobotInboundEvent.TargetEvent(obstacleId =obNo, targetId =targetId)
                         }
                     }
                 }

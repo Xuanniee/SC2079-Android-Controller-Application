@@ -49,25 +49,34 @@ class MapViewModel(
     }
 
     fun resetAll() {
+        // Reset the entire Map
         mapSnapshot = resetMap()
-        _uiState.update { it.copy(robotStatus = "", editMode = MapEditMode.Cursor) }
+        // Update UI and Propagate
+        _uiState.update {
+            it.copy(robotStatus = "", editMode = MapEditMode.Cursor, robotPosition = null)
+        }
         publish()
     }
 
     fun onTapCell(x: Int, y: Int): Obstacle? {
         return when (_uiState.value.editMode) {
             MapEditMode.SetStart -> {
-                val dir = mapSnapshot.robotPosition?.faceDir ?: FaceDir.UP
+                val dir = mapSnapshot.robotPosition?.faceDir ?: FaceDir.NORTH
                 mapSnapshot = setRobotPosition(mapSnapshot, x, y, dir)
                 publish()
                 null
             }
             MapEditMode.PlaceObstacle -> {
-                val before = mapSnapshot
+                // Store existing obstacles id into a hashset
+                val existingObstacleIds = mapSnapshot.obstacles.map { it.obstacleId }.toSet()
+
+                // Try adding the obstacle and update UI
                 mapSnapshot = addObstacle(mapSnapshot, x, y)
                 publish()
-                // return newly added (if any)
-                mapSnapshot.obstacles.firstOrNull { it.obstacleId == mapSnapshot.nextObstacleId - 1 && before.nextObstacleId != mapSnapshot.nextObstacleId }
+
+                // return newly added obstacle if added else null
+                mapSnapshot.obstacles.firstOrNull { it.obstacleId !in existingObstacleIds }
+//                mapSnapshot.obstacles.firstOrNull { it.obstacleId == mapSnapshot.nextObstacleId - 1 && before.nextObstacleId != mapSnapshot.nextObstacleId }
             }
             MapEditMode.ChangeObstacleFace,
             MapEditMode.DragObstacle,
@@ -117,7 +126,7 @@ class MapViewModel(
                 is RobotInboundEvent.TargetEvent -> {
                     // Java used cmd[1]-1 for internal; checklist uses obstacle number directly.
                     // We follow checklist: obstacleNo matches displayed obstacle number.
-                    s = updateObstacleTargetId(s, e.obstacleNo, e.targetId)
+                    s = updateObstacleTargetId(s, e.obstacleId, e.targetId)
                 }
             }
         }
@@ -160,7 +169,7 @@ class MapViewModel(
         _uiState.update {
             it.copy(
                 robotPosition = mapSnapshot.robotPosition,
-                obstacles = mapSnapshot.obstacles.sortedBy { o -> o.obstacleId }
+                obstacles = mapSnapshot.obstacles.sortedBy { obstacle -> obstacle.obstacleId }
             )
         }
     }

@@ -209,15 +209,17 @@ fun GridMapCanvas(
             uiState.obstacles.forEach { obs ->
                 val rect = cellRect(obs.x, obs.y, cellSize, grid, gridLeft, gridTop)
 
+                // Ensure Obstacle is Black
                 drawRect(
-                    color = Color(0xFFB39DDB),
+                    color = Color.Black,
                     topLeft = rect.topLeft,
                     size = rect.size
                 )
 
+                // Strip color is Yellow
                 val stripe = faceStripe(rect, obs.faceDir)
                 drawRect(
-                    color = Color(0xFF5E35B1),
+                    color = Color.Yellow,
                     topLeft = stripe.topLeft,
                     size = stripe.size
                 )
@@ -231,8 +233,9 @@ fun GridMapCanvas(
                     val cx = rect.center.x
                     val cy = rect.center.y
 
-                    paint.color = android.graphics.Color.BLACK
-                    drawText("O${obs.obstacleId}", cx, cy - textSizePx * 0.1f, paint)
+                    // Number the obstacle only in White Paint
+                    paint.color = android.graphics.Color.WHITE
+                    drawText("${obs.obstacleId}", cx, cy - textSizePx * 0.1f, paint)
 
                     obs.displayedTargetId?.let {
                         paint.color = android.graphics.Color.DKGRAY
@@ -253,10 +256,10 @@ fun GridMapCanvas(
                 val center = rect.center
                 val d = cellSize * 0.25f
                 val marker = when (pose.faceDir) {
-                    FaceDir.UP -> Offset(center.x, center.y - d)
-                    FaceDir.DOWN -> Offset(center.x, center.y + d)
-                    FaceDir.LEFT -> Offset(center.x - d, center.y)
-                    FaceDir.RIGHT -> Offset(center.x + d, center.y)
+                    FaceDir.NORTH -> Offset(center.x, center.y - d)
+                    FaceDir.SOUTH -> Offset(center.x, center.y + d)
+                    FaceDir.WEST -> Offset(center.x - d, center.y)
+                    FaceDir.EAST -> Offset(center.x + d, center.y)
                 }
 
                 drawCircle(
@@ -369,10 +372,10 @@ private fun cellRect(
 private fun faceStripe(rect: Rect, face: FaceDir): Rect {
     val t = rect.width * 0.12f
     return when (face) {
-        FaceDir.UP -> Rect(rect.left, rect.top, rect.right, rect.top + t)
-        FaceDir.DOWN -> Rect(rect.left, rect.bottom - t, rect.right, rect.bottom)
-        FaceDir.LEFT -> Rect(rect.left, rect.top, rect.left + t, rect.bottom)
-        FaceDir.RIGHT -> Rect(rect.right - t, rect.top, rect.right, rect.bottom)
+        FaceDir.NORTH -> Rect(rect.left, rect.top, rect.right, rect.top + t)
+        FaceDir.SOUTH -> Rect(rect.left, rect.bottom - t, rect.right, rect.bottom)
+        FaceDir.WEST -> Rect(rect.left, rect.top, rect.left + t, rect.bottom)
+        FaceDir.EAST -> Rect(rect.right - t, rect.top, rect.right, rect.bottom)
     }
 }
 

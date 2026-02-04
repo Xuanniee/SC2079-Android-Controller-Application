@@ -194,7 +194,7 @@ fun HomeScreen(
                 ) ?: RobotStatus(
                     x = 0,
                     y = 0,
-                    faceDir = FaceDir.UP,
+                    faceDir = FaceDir.NORTH,
                     statusMessage = "Stopped",
                     isMoving = false
                 )
@@ -256,22 +256,22 @@ fun HomeScreen(
     
     // Handler functions for control buttons
     val handleMoveUp = {
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.UP)
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
         robotStatus = moveRobotUseCase.moveAbsolute(current, "up")
     }
     
     val handleMoveDown = {
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.UP)
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
         robotStatus = moveRobotUseCase.moveAbsolute(current, "down")
     }
     
     val handleMoveLeft = {
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.UP)
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
         robotStatus = moveRobotUseCase.moveAbsolute(current, "left")
     }
     
     val handleMoveRight = {
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.UP)
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
         robotStatus = moveRobotUseCase.moveAbsolute(current, "right")
     }
     

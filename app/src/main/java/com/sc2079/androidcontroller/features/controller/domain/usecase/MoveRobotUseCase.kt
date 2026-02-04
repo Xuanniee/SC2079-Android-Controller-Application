@@ -80,10 +80,10 @@ class MoveRobotUseCase(
         
         // Update facing direction to match movement direction
         val newFaceDir = when (absoluteDirection.lowercase()) {
-            "up" -> FaceDir.UP
-            "down" -> FaceDir.DOWN
-            "left" -> FaceDir.LEFT
-            "right" -> FaceDir.RIGHT
+            "north" -> FaceDir.NORTH
+            "south" -> FaceDir.SOUTH
+            "west" -> FaceDir.WEST
+            "east" -> FaceDir.EAST
             else -> currentStatus.faceDir
         }
         
@@ -139,34 +139,34 @@ class MoveRobotUseCase(
         return when (direction.lowercase()) {
             "forward" -> {
                 when (faceDir) {
-                    FaceDir.UP -> Pair(currentX, currentY - 1)
-                    FaceDir.DOWN -> Pair(currentX, currentY + 1)
-                    FaceDir.LEFT -> Pair(currentX - 1, currentY)
-                    FaceDir.RIGHT -> Pair(currentX + 1, currentY)
+                    FaceDir.NORTH -> Pair(currentX, currentY - 1)
+                    FaceDir.SOUTH -> Pair(currentX, currentY + 1)
+                    FaceDir.WEST -> Pair(currentX - 1, currentY)
+                    FaceDir.EAST -> Pair(currentX + 1, currentY)
                 }
             }
             "backward" -> {
                 when (faceDir) {
-                    FaceDir.UP -> Pair(currentX, currentY + 1)
-                    FaceDir.DOWN -> Pair(currentX, currentY - 1)
-                    FaceDir.LEFT -> Pair(currentX + 1, currentY)
-                    FaceDir.RIGHT -> Pair(currentX - 1, currentY)
+                    FaceDir.NORTH -> Pair(currentX, currentY + 1)
+                    FaceDir.SOUTH -> Pair(currentX, currentY - 1)
+                    FaceDir.WEST -> Pair(currentX + 1, currentY)
+                    FaceDir.EAST -> Pair(currentX - 1, currentY)
                 }
             }
-            "left" -> {
+            "west" -> {
                 when (faceDir) {
-                    FaceDir.UP -> Pair(currentX - 1, currentY)
-                    FaceDir.DOWN -> Pair(currentX + 1, currentY)
-                    FaceDir.LEFT -> Pair(currentX, currentY + 1)
-                    FaceDir.RIGHT -> Pair(currentX, currentY - 1)
+                    FaceDir.NORTH -> Pair(currentX - 1, currentY)
+                    FaceDir.SOUTH -> Pair(currentX + 1, currentY)
+                    FaceDir.WEST -> Pair(currentX, currentY + 1)
+                    FaceDir.EAST -> Pair(currentX, currentY - 1)
                 }
             }
-            "right" -> {
+            "east" -> {
                 when (faceDir) {
-                    FaceDir.UP -> Pair(currentX + 1, currentY)
-                    FaceDir.DOWN -> Pair(currentX - 1, currentY)
-                    FaceDir.LEFT -> Pair(currentX, currentY - 1)
-                    FaceDir.RIGHT -> Pair(currentX, currentY + 1)
+                    FaceDir.NORTH -> Pair(currentX + 1, currentY)
+                    FaceDir.SOUTH -> Pair(currentX - 1, currentY)
+                    FaceDir.WEST -> Pair(currentX, currentY - 1)
+                    FaceDir.EAST -> Pair(currentX, currentY + 1)
                 }
             }
             else -> Pair(currentX, currentY) // Invalid direction, no movement

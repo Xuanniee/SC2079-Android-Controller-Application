@@ -6,7 +6,7 @@ import com.sc2079.androidcontroller.features.map.domain.model.MapSnapshot
  * Updates the TargetID of an Obstacle in the Map
  */
 class UpdateObstacleTargetIdUseCase {
-    operator fun invoke(mapSnapshot: MapSnapshot, obstacleId: Int, displayedTargetId: String): MapSnapshot {
+    operator fun invoke(mapSnapshot: MapSnapshot, obstacleId: Int, displayedTargetId: Int?): MapSnapshot {
         // Find the index of the obstacle that needs to be updated
         val targetIdx = mapSnapshot.obstacles.indexOfFirst { it.obstacleId == obstacleId }
         if (targetIdx < 0) {

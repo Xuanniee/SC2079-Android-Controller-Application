@@ -65,7 +65,7 @@ data class CellState(
     // Obstacle data
     val obstacleId: Int? = null,
     val obstacleFaceDir: com.sc2079.androidcontroller.features.map.domain.model.FaceDir? = null,
-    val displayedTargetId: String? = null,
+    val displayedTargetId: Int? = null,
     // Robot data
     val robotFaceDir: com.sc2079.androidcontroller.features.map.domain.model.FaceDir? = null
 )
@@ -499,10 +499,10 @@ private fun MapBox(
                     val center = Offset(size.width / 2, size.height / 2)
                     val d = size.minDimension * 0.25f
                     val marker = when (cellState.robotFaceDir) {
-                        FaceDir.UP -> Offset(center.x, center.y - d)
-                        FaceDir.DOWN -> Offset(center.x, center.y + d)
-                        FaceDir.LEFT -> Offset(center.x - d, center.y)
-                        FaceDir.RIGHT -> Offset(center.x + d, center.y)
+                        FaceDir.NORTH -> Offset(center.x, center.y - d)
+                        FaceDir.SOUTH -> Offset(center.x, center.y + d)
+                        FaceDir.WEST -> Offset(center.x - d, center.y)
+                        FaceDir.EAST -> Offset(center.x + d, center.y)
                     }
 
                     drawCircle(
@@ -539,10 +539,10 @@ private fun getCellColor(cellType: CellType): Color {
 private fun faceStripe(rect: Rect, face: FaceDir): Rect {
     val t = rect.width * 0.12f
     return when (face) {
-        FaceDir.UP -> Rect(rect.left, rect.top, rect.right, rect.top + t)
-        FaceDir.DOWN -> Rect(rect.left, rect.bottom - t, rect.right, rect.bottom)
-        FaceDir.LEFT -> Rect(rect.left, rect.top, rect.left + t, rect.bottom)
-        FaceDir.RIGHT -> Rect(rect.right - t, rect.top, rect.right, rect.bottom)
+        FaceDir.NORTH -> Rect(rect.left, rect.top, rect.right, rect.top + t)
+        FaceDir.SOUTH -> Rect(rect.left, rect.bottom - t, rect.right, rect.bottom)
+        FaceDir.WEST -> Rect(rect.left, rect.top, rect.left + t, rect.bottom)
+        FaceDir.EAST -> Rect(rect.right - t, rect.top, rect.right, rect.bottom)
     }
 }
 

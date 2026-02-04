@@ -1,4 +1,4 @@
-package com.sc2079.androidcontroller.features.map.ui
+package com.sc2079.androidcontroller.features.map.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row

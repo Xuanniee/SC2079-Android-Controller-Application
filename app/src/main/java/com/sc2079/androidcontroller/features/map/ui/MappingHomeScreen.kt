@@ -2,6 +2,7 @@ package com.sc2079.androidcontroller.features.map.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -15,11 +16,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.sc2079.androidcontroller.features.bluetooth.domain.Message
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.features.map.domain.model.MapEditMode
 import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
 import com.sc2079.androidcontroller.features.map.presentation.RobotProtocol
+import com.sc2079.androidcontroller.features.map.ui.components.DirectionPickerDialog
+import com.sc2079.androidcontroller.features.map.ui.components.MessageLogBottomDialog
 
 /**
  * Direction enum for arrow buttons
@@ -37,6 +41,14 @@ fun MappingHomeScreen(
     // Process only new robot messages (so recomposition doesn't re-apply)
     val btUi by bluetoothViewModel.bluetoothUiState.collectAsState()
     var lastProcessedIdx by remember { mutableIntStateOf(0) }
+    // BT Message Log
+    var showLogSheet by remember { mutableStateOf(false) }
+    val logItems = remember(btUi.messages) {
+        btUi.messages
+            .filter { RobotProtocol.validateProtocolMessage(it.messageBody) }
+            .map { Message(fromRobot = it.fromRobot, messageBody = it.messageBody) }
+    }
+
 
     LaunchedEffect(btUi.messages.size) {
         val msgs = btUi.messages
@@ -47,16 +59,43 @@ fun MappingHomeScreen(
         lastProcessedIdx = msgs.size
     }
 
+    // Ensure we wait until obstacles update, then we sync the UI to show the new obstacles
+    var pendingSyncAfterLoad by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.obstacles, pendingSyncAfterLoad) {
+        if (pendingSyncAfterLoad) {
+            // TODO I think better to not send clear to robot first ig
+            // bluetoothViewModel.sendMessage(RobotProtocol.clear())
+            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(uiState.obstacles))
+            pendingSyncAfterLoad = false
+        }
+    }
+
+
     // Face picker dialog state
     var facePickerForObstacle by remember { mutableStateOf<Int?>(null) }
     val obstacleNo = facePickerForObstacle
 
-    val statusSubtitle = remember(btUi.messages) {
+    // Status can display both the Robot Status and Last BT Msg
+    val statusSubtitle = remember(btUi.messages.size, uiState.robotStatus) {
         buildString {
+            if (uiState.robotStatus.isNotBlank()) {
+                append("RobotStatus: ${uiState.robotStatus.take(64)} • ")
+            }
+
+            // Track the BT Messages
             val last = btUi.messages.lastOrNull()
-            if (last == null) append("No messages yet")
-            else if (last.fromRobot) append("Robot: ${last.messageBody.take(32)}")
-            else append("You: ${last.messageBody.take(32)}")
+            if (last == null) {
+                append("No messages yet")
+            }
+            else if (last.fromRobot) {
+                // Message from Robot
+                append("Robot: ${last.messageBody.take(64)}")
+            }
+            else {
+                // Message from User
+                append("You: ${last.messageBody.take(64)}")
+            }
         }
     }
 
@@ -117,17 +156,60 @@ fun MappingHomeScreen(
                             MappingScreen(
                                 uiState = uiState,
                                 onSetMode = { mapViewModel.setEditMode(it) },
-                                onReset = { mapViewModel.resetAll() },
+                                onReset = {
+                                    // Reset the Map with the VM and send Messages to update
+                                    mapViewModel.resetAll()
+                                    bluetoothViewModel.sendMessage(RobotProtocol.clear())
+                                    // TODO Need decide if we want to send an empty list when we reset the obstacle
+                                    bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList()))
+                                },
                                 onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
                                 onSaveMap = { mapViewModel.saveCurrentMap(it) },
                                 onLoadMap = { mapViewModel.loadMap(it) },
                                 onDeleteMap = { mapViewModel.deleteMap(it) },
-
+                                // Placement of a new obstacle
                                 onTapCell = { x, y ->
+                                    // Retrieve the Robot Old Position (if it exists)
+                                    val oldRobotPosition = uiState.robotPosition
+                                    // Retrieve the result of tapping cell
                                     val added = mapViewModel.onTapCell(x, y)
-                                    if (added != null) {
-                                        bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(added))
+
+//                                    // TEST to ensure msg validation works
+//                                    android.util.Log.d("SENDING MSG", "Should see that we came in")
+//                                    bluetoothViewModel.sendMessage(
+//                                        "TESTING SHOULDNT SEE"
+//                                    )
+
+                                    // Determine which mode of controller we are in
+                                    when (uiState.editMode) {
+                                        // Placing Robot Position
+                                        MapEditMode.SetStart -> {
+                                            // For updating the starting placement of robot, and not moving
+                                            val newRobotPosition = mapViewModel.uiState.value.robotPosition
+                                            if (newRobotPosition != null && newRobotPosition != oldRobotPosition) {
+                                                // Send Message for Placing Robot
+                                                bluetoothViewModel.sendMessage(
+                                                    RobotProtocol.placeRobot(newRobotPosition)
+                                                )
+                                            }
+                                        }
+
+                                        // Place Obstacle
+                                        MapEditMode.PlaceObstacle -> {
+                                            // If no obstacle previously, we can send a message indicating we added it
+                                            if (added != null) {
+                                                bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(added))
+                                            }
+                                        }
+
+                                        // Other Modes dont need to send messages
+                                        else -> Unit
                                     }
+//                                    if (added != null) {
+//                                        bluetoothViewModel.sendMessage(
+//                                            RobotProtocol.upsertObstacle(added)
+//                                        )
+//                                    }
                                 },
                                 onTapObstacleForFace = { no ->
                                     if (uiState.editMode == MapEditMode.ChangeObstacleFace) {
@@ -137,11 +219,23 @@ fun MappingHomeScreen(
                                 onStartDragObstacle = { /* no-op */ },
                                 onDragObstacleToCell = { no, x, y ->
                                     val moved = mapViewModel.onDragObstacle(no, x, y)
-                                    if (moved != null) bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(moved))
+                                    if (moved != null) {
+                                        bluetoothViewModel.sendMessage(
+                                            RobotProtocol.upsertObstacle(
+                                                moved
+                                            )
+                                        )
+                                    }
                                 },
                                 onDragOutsideRemove = { no ->
                                     val removed = mapViewModel.removeObstacleByNo(no)
-                                    if (removed != null) bluetoothViewModel.sendMessage(RobotProtocol.removeObstacle(removed))
+                                    if (removed != null) {
+                                        bluetoothViewModel.sendMessage(
+                                            RobotProtocol.removeObstacle(
+                                                removed
+                                            )
+                                        )
+                                    }
                                 },
                                 onEndDrag = { /* no-op */ }
                             )
@@ -161,17 +255,36 @@ fun MappingHomeScreen(
                         onPickLoadName = { selectedLoadName = it },
                         onSetMode = { mapViewModel.setEditMode(it) },
                         onReset = {
+
                             mapViewModel.resetAll()
                             bluetoothViewModel.sendMessage(RobotProtocol.clear())
+                            // TODO Need decide if we want to send an empty list when we reset the obstacle
+                            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList()))
                         },
                         onSave = { showSaveDialog = true },
                         onLoad = {
-                            // If none saved yet, fallback to "default" (doesn't crash)
+                            // Return the name of the loaded map, default if it doesnt exist
                             val name = if (uiState.savedMaps.isNotEmpty()) selectedLoadName else "default"
+
+                            // Ensure we send the obstacle lists only after loading
+                            pendingSyncAfterLoad = true
+                            // loadMap is an async function call so we must wait for uiState.obstacles to update first
                             mapViewModel.loadMap(name)
                         },
                         statusTitle = "Activity Status",
                         statusSubtitle = statusSubtitle,
+                        // To sync obstacle list by sending it to RPI
+                        onSync = {
+                            // TODO Better to not Always clear first to ensure obstacle is latest
+//                            bluetoothViewModel.sendMessage(
+//                                RobotProtocol.clear()
+//                            )
+                            bluetoothViewModel.sendMessage(
+                                RobotProtocol.sendObstacleList(uiState.obstacles)
+                            )
+                        },
+                        // To Open Message Log
+                        onOpenLog = { showLogSheet = true },
                         onDirection = { /* TODO wire manual move if you want */ }
                     )
                 }
@@ -192,15 +305,53 @@ fun MappingHomeScreen(
                         MappingScreen(
                             uiState = uiState,
                             onSetMode = { mapViewModel.setEditMode(it) },
-                            onReset = { mapViewModel.resetAll() },
+                            onReset = {
+                                mapViewModel.resetAll()
+                                bluetoothViewModel.sendMessage(RobotProtocol.clear())
+                                // TODO Need decide if we want to send an empty list when we reset the obstacle
+                                bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList()))
+                            },
                             onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
                             onSaveMap = { mapViewModel.saveCurrentMap(it) },
                             onLoadMap = { mapViewModel.loadMap(it) },
                             onDeleteMap = { mapViewModel.deleteMap(it) },
 
                             onTapCell = { x, y ->
+                                // Retrieve the Robot Old Position (if it exists)
+                                val oldRobotPosition = uiState.robotPosition
+                                // Retrieve the result of tapping cell
                                 val added = mapViewModel.onTapCell(x, y)
-                                if (added != null) bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(added))
+
+                                // Determine which mode of controller we are in
+                                when (uiState.editMode) {
+                                    // Placing Robot Position
+                                    MapEditMode.SetStart -> {
+                                        // For updating the starting placement of robot, and not moving
+                                        val newRobotPosition =
+                                            mapViewModel.uiState.value.robotPosition
+                                        if (newRobotPosition != null && newRobotPosition != oldRobotPosition) {
+                                            // Send Message for Placing Robot
+                                            bluetoothViewModel.sendMessage(
+                                                RobotProtocol.placeRobot(newRobotPosition)
+                                            )
+                                        }
+                                    }
+
+                                    // Place Obstacle
+                                    MapEditMode.PlaceObstacle -> {
+                                        // If no obstacle previously, we can send a message indicating we added it
+                                        if (added != null) {
+                                            bluetoothViewModel.sendMessage(
+                                                RobotProtocol.upsertObstacle(
+                                                    added
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    // Other Modes dont need to send messages
+                                    else -> Unit
+                                }
                             },
                             onTapObstacleForFace = { no ->
                                 if (uiState.editMode == MapEditMode.ChangeObstacleFace) facePickerForObstacle = no
@@ -230,20 +381,47 @@ fun MappingHomeScreen(
                         onReset = {
                             mapViewModel.resetAll()
                             bluetoothViewModel.sendMessage(RobotProtocol.clear())
+                            // TODO Need decide if we want to send an empty list when we reset the obstacle
+                            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList()))
                         },
                         onSave = { showSaveDialog = true },
                         onLoad = {
+                            // Return the name of the loaded map, default if it doesnt exist
                             val name = if (uiState.savedMaps.isNotEmpty()) selectedLoadName else "default"
+
+                            // Ensure we send the obstacle lists only after loading
+                            pendingSyncAfterLoad = true
                             mapViewModel.loadMap(name)
                         },
                         statusTitle = "Activity Status",
                         statusSubtitle = statusSubtitle,
+                        // To sync obstacle list by sending it to RPI
+                        onSync = {
+                            // TODO Better to not Always clear first to ensure obstacle is latest
+//                            bluetoothViewModel.sendMessage(
+//                                RobotProtocol.clear()
+//                            )
+                            bluetoothViewModel.sendMessage(
+                                RobotProtocol.sendObstacleList(uiState.obstacles)
+                            )
+                        },
+                        // To open messages
+                        onOpenLog = { showLogSheet = true },
                         onDirection = { }
                     )
                 }
             }
         }
     }
+
+    // Dialog to show messages
+    MessageLogBottomDialog(
+        visible = showLogSheet,
+        items = logItems,
+        onDismiss = { showLogSheet = false },
+        // TODO for now we dont clear messages. Need decide if we want bluetoothViewModel::clearMessages
+        onClear = null
+    )
 
     // --- Save dialog ---
     if (showSaveDialog) {
@@ -280,16 +458,26 @@ fun MappingHomeScreen(
         )
     }
 
-    // Face picker dialog (keep exactly as your original)
+    // Face picker dialog
     if (obstacleNo != null) {
-        val current = uiState.obstacles.firstOrNull { it.obstacleId == obstacleNo }?.faceDir ?: FaceDir.UP
+        // If we have a valid Obstacle ID to change direction
+        val current = uiState.obstacles.firstOrNull { it.obstacleId == obstacleNo }?.faceDir ?: FaceDir.NORTH
+
         DirectionPickerDialog(
-            title = "Obstacle $obstacleNo face",
+            title = "Obstacle $obstacleNo Face",
             initial = current,
             onDismiss = { facePickerForObstacle = null },
+            // Select a newFace
             onConfirm = { newFace ->
+                // Default Face is Up if NULL
+                val oldFace = uiState.obstacles.firstOrNull { it.obstacleId == obstacleNo }?.faceDir
+                    ?: FaceDir.NORTH
                 val updated = mapViewModel.setObstacleFace(obstacleNo, newFace)
-                if (updated != null) bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(updated))
+                if (updated != null) {
+                    bluetoothViewModel.sendMessage(
+                        RobotProtocol.changeObstacleOrientation(updated, oldFace, newFace)
+                    )
+                }
                 facePickerForObstacle = null
             }
         )
@@ -311,6 +499,9 @@ private fun RightPanel(
     onLoad: () -> Unit,
     statusTitle: String,
     statusSubtitle: String,
+    onOpenLog: () -> Unit,
+    // To sync obstacle list with robot
+    onSync: () -> Unit,
     onDirection: (Direction) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -338,7 +529,7 @@ private fun RightPanel(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ModeIcon(
@@ -372,7 +563,8 @@ private fun RightPanel(
 
                 // Actions row 1: Reset + Save
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     FilledTonalButton(
@@ -398,10 +590,10 @@ private fun RightPanel(
 
                 Spacer(Modifier.height(10.dp))
 
-                // Actions row 2: Load dropdown + Load button
-                // This fixes “Save/Load no longer works” caused by hardcoded "default".
+                // Actions row 2: Load button + Sync Robot Messages
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -441,15 +633,31 @@ private fun RightPanel(
 //                        }
 //                    }
 
+                    // Load Maps
                     FilledTonalButton(
                         onClick = onLoad,
                         enabled = savedMaps.isNotEmpty(),
+                        modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Icon(Icons.Default.FolderOpen, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text("Load")
                     }
+
+                    // Robot Sync Button
+                    FilledTonalButton(
+                        // Sync with Robot
+                        onClick = onSync,
+                        enabled = true,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Default.Sync, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sync")
+                    }
+
                 }
             }
         }
@@ -473,7 +681,11 @@ private fun RightPanel(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                StatusRow(title = statusTitle, subtitle = statusSubtitle)
+                StatusRow(
+                    title = statusTitle,
+                    subtitle = statusSubtitle,
+                    onOpenLog = onOpenLog,
+                )
 
                 // D-pad (cross layout like screenshot)
                 DPad(onDirection = onDirection, modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -512,7 +724,11 @@ private fun ModeIcon(
 }
 
 @Composable
-private fun StatusRow(title: String, subtitle: String) {
+private fun StatusRow(
+    title: String,
+    subtitle: String,
+    onOpenLog: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -530,15 +746,21 @@ private fun StatusRow(title: String, subtitle: String) {
                 maxLines = 1
             )
         }
-        IconButton(onClick = { /* settings */ }) {
-            Icon(Icons.Default.Settings, contentDescription = "Settings")
+//        IconButton(onClick = { /* settings */ }) {
+//            Icon(Icons.Default.Settings, contentDescription = "Settings")
+//        }
+        // Open Message Log Button
+        IconButton(onClick = onOpenLog) {
+            Icon(Icons.Default.List, contentDescription = "Message Log")
         }
-        // simple "toggle" dot to mimic screenshot
-        Switch(
-            checked = true,
-            onCheckedChange = null,
-            enabled = false
-        )
+
+
+//        // simple "toggle" dot to mimic screenshot
+//        Switch(
+//            checked = true,
+//            onCheckedChange = null,
+//            enabled = false
+//        )
     }
 }
 
@@ -556,18 +778,18 @@ private fun DPad(
             onClick = { onDirection(Direction.UP) }
         )
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(5.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             DirectionButton(Direction.LEFT, onClick = { onDirection(Direction.LEFT) })
             Spacer(Modifier.size(44.dp)) // empty center (like screenshot)
             DirectionButton(Direction.RIGHT, onClick = { onDirection(Direction.RIGHT) })
         }
 
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(5.dp))
 
         DirectionButton(
             direction = Direction.DOWN,
@@ -605,416 +827,3 @@ private fun editModeLabel(mode: MapEditMode): String = when (mode) {
     MapEditMode.DragObstacle -> "Drag Obstacle"
     MapEditMode.ChangeObstacleFace -> "Change Face"
 }
-
-
-
-//package com.sc2079.androidcontroller.features.map.ui
-//
-//import androidx.compose.animation.AnimatedVisibility
-//import androidx.compose.animation.core.tween
-//import androidx.compose.animation.fadeIn
-//import androidx.compose.foundation.background
-//import androidx.compose.foundation.layout.Arrangement
-//import androidx.compose.foundation.layout.Box
-//import androidx.compose.foundation.layout.BoxWithConstraints
-//import androidx.compose.foundation.layout.Column
-//import androidx.compose.foundation.layout.Row
-//import androidx.compose.foundation.layout.Spacer
-//import androidx.compose.foundation.layout.fillMaxSize
-//import androidx.compose.foundation.layout.fillMaxWidth
-//import androidx.compose.foundation.layout.height
-//import androidx.compose.foundation.layout.padding
-//import androidx.compose.foundation.layout.size
-//import androidx.compose.foundation.layout.width
-//import androidx.compose.foundation.shape.RoundedCornerShape
-//import androidx.compose.material.icons.Icons
-//import androidx.compose.material.icons.automirrored.filled.ArrowBack
-//import androidx.compose.material.icons.automirrored.filled.ArrowForward
-//import androidx.compose.material.icons.filled.ArrowDownward
-//import androidx.compose.material.icons.filled.ArrowUpward
-//import androidx.compose.material.icons.filled.Settings
-//import androidx.compose.material3.Card
-//import androidx.compose.material3.CardDefaults
-//import androidx.compose.material3.Icon
-//import androidx.compose.material3.IconButton
-//import androidx.compose.material3.IconButtonDefaults
-//import androidx.compose.material3.MaterialTheme
-//import androidx.compose.material3.Text
-//import androidx.compose.runtime.*
-//import androidx.compose.ui.Alignment
-//import androidx.compose.ui.Modifier
-//import androidx.compose.ui.draw.clip
-//import androidx.compose.ui.platform.LocalContext
-//import androidx.compose.ui.unit.dp
-//import androidx.lifecycle.viewmodel.compose.viewModel
-//import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
-//import com.sc2079.androidcontroller.features.map.data.local.MapPreferencesDataSource
-//import com.sc2079.androidcontroller.features.map.data.repository.MapRepositoryImpl
-//import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
-//import com.sc2079.androidcontroller.features.map.domain.model.MapEditMode
-//import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
-//import com.sc2079.androidcontroller.features.map.presentation.MapViewModelFactory
-//import com.sc2079.androidcontroller.features.map.presentation.RobotProtocol
-//import com.sc2079.androidcontroller.ui.components.FadeInAnimation
-//
-///**
-// * Direction enum for arrow buttons
-// */
-//enum class Direction { UP, DOWN, LEFT, RIGHT }
-//
-//@Composable
-//fun MappingHomeScreen(
-//    bluetoothViewModel: BluetoothViewModel,
-//    mapViewModel: MapViewModel
-//) {
-////    val context = LocalContext.current
-////    val repo = remember { MapRepositoryImpl(MapPreferencesDataSource(context.applicationContext)) }
-////
-////    val mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory(repo))
-//    val uiState by mapViewModel.uiState.collectAsState()
-//
-//    // Process only new robot messages (so recomposition doesn't re-apply)
-//    val btUi by bluetoothViewModel.bluetoothUiState.collectAsState()
-//    var lastProcessedIdx by remember { mutableIntStateOf(0) }
-//
-//    LaunchedEffect(btUi.messages.size) {
-//        val msgs = btUi.messages
-//        for (i in lastProcessedIdx until msgs.size) {
-//            val m = msgs[i]
-//            if (m.fromRobot) mapViewModel.applyRobotMessage(m.messageBody)
-//        }
-//        lastProcessedIdx = msgs.size
-//    }
-//
-//    // Face picker dialog state
-//    var facePickerForObstacle by remember { mutableStateOf<Int?>(null) }
-//    val obstacleNo = facePickerForObstacle
-//
-//    BoxWithConstraints(
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .background(MaterialTheme.colorScheme.background)
-//            .padding(12.dp)
-//    ) {
-//        // Height of the bottom controls bar we overlay
-//        val bottomControlsHeight = if (maxWidth > maxHeight) 88.dp else 104.dp
-//
-//        Box(Modifier.fillMaxSize()) {
-//            // Give MappingScreen bottom padding so it won't be covered by the overlay
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxSize()
-//                    .padding(bottom = bottomControlsHeight + 12.dp)
-//            ) {
-//                FadeInAnimation(durationMillis = 800) {
-//                    MappingScreen(
-//                        uiState = uiState,
-//                        onSetMode = { mapViewModel.setEditMode(it) },
-//                        onReset = { mapViewModel.resetAll() },
-//                        onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
-//                        onSaveMap = { mapViewModel.saveCurrentMap(it) },
-//                        onLoadMap = { mapViewModel.loadMap(it) },
-//                        onDeleteMap = { mapViewModel.deleteMap(it) },
-//
-//                        onTapCell = { x, y ->
-//                            val added = mapViewModel.onTapCell(x, y)
-//                            if (added != null) {
-//                                bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(added))
-//                            }
-//                        },
-//                        onTapObstacleForFace = { no ->
-//                            if (uiState.editMode == MapEditMode.ChangeObstacleFace) {
-//                                facePickerForObstacle = no
-//                            }
-//                        },
-//                        onStartDragObstacle = { /* no-op */ },
-//                        onDragObstacleToCell = { no, x, y ->
-//                            val moved = mapViewModel.onDragObstacle(no, x, y)
-//                            if (moved != null) bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(moved))
-//                        },
-//                        onDragOutsideRemove = { no ->
-//                            val removed = mapViewModel.removeObstacleByNo(no)
-//                            if (removed != null) bluetoothViewModel.sendMessage(RobotProtocol.removeObstacle(removed))
-//                        },
-//                        onEndDrag = { /* no-op */ }
-//                    )
-//                }
-//            }
-//
-//            // Bottom controls/status OVERLAY (guaranteed bottom)
-//            AnimatedVisibility(
-//                visible = true,
-//                enter = fadeIn(animationSpec = tween(durationMillis = 700, delayMillis = 150)),
-//                modifier = Modifier
-//                    .align(Alignment.BottomCenter)
-//                    .fillMaxWidth()
-//                    .height(bottomControlsHeight)
-//            ) {
-//                ControlsCard(
-//                    modifier = Modifier.fillMaxSize(),
-//                    statusTitle = "Activity Status",
-//                    statusSubtitle = buildString {
-//                        val last = btUi.messages.lastOrNull()
-//                        if (last == null) append("No messages yet")
-//                        else if (last.fromRobot) append("Robot: ${last.messageBody.take(24)}")
-//                        else append("You: ${last.messageBody.take(24)}")
-//                    },
-//                    onDirection = { _ ->
-//                        // TODO wire to your manual move protocol if you want
-//                        Unit
-//                    }
-//                )
-//            }
-//        }
-//    }
-//
-//    // Face picker dialog (keep exactly as your original)
-//    if (obstacleNo != null) {
-//        val current = uiState.obstacles.firstOrNull { it.obstacleId == obstacleNo }?.faceDir ?: FaceDir.UP
-//        DirectionPickerDialog(
-//            title = "Obstacle $obstacleNo face",
-//            initial = current,
-//            onDismiss = { facePickerForObstacle = null },
-//            onConfirm = { newFace ->
-//                val updated = mapViewModel.setObstacleFace(obstacleNo, newFace)
-//                if (updated != null) bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(updated))
-//                facePickerForObstacle = null
-//            }
-//        )
-//    }
-//}
-//
-///**
-// * Controls card component (ported from HomeScreen styling)
-// */
-//@Composable
-//private fun ControlsCard(
-//    statusTitle: String,
-//    statusSubtitle: String,
-//    onDirection: (Direction) -> Unit,
-//    modifier: Modifier = Modifier
-//) {
-//    Card(
-//        modifier = modifier,
-//        shape = RoundedCornerShape(16.dp),
-//        colors = CardDefaults.cardColors(
-//            containerColor = MaterialTheme.colorScheme.secondary
-//        ),
-//        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-//    ) {
-//        Column(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .padding(12.dp)
-//        ) {
-//            Text(
-//                text = "Controls",
-//                style = MaterialTheme.typography.labelMedium,
-//                color = MaterialTheme.colorScheme.onSurfaceVariant
-//            )
-//
-//            Spacer(modifier = Modifier.height(12.dp))
-//
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceBetween,
-//                verticalAlignment = Alignment.CenterVertically
-//            ) {
-//                StatusCard(
-//                    title = statusTitle,
-//                    subtitle = statusSubtitle,
-//                    modifier = Modifier.weight(1f, fill = false)
-//                )
-//
-//                Spacer(modifier = Modifier.width(12.dp))
-//
-//                DirectionControlButtons(onDirection = onDirection)
-//            }
-//        }
-//    }
-//}
-//
-//@Composable
-//private fun DirectionControlButtons(
-//    onDirection: (Direction) -> Unit
-//) {
-//    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-//        DirectionButton(direction = Direction.UP, onClick = { onDirection(Direction.UP) })
-//        DirectionButton(direction = Direction.DOWN, onClick = { onDirection(Direction.DOWN) })
-//        DirectionButton(direction = Direction.LEFT, onClick = { onDirection(Direction.LEFT) })
-//        DirectionButton(direction = Direction.RIGHT, onClick = { onDirection(Direction.RIGHT) })
-//    }
-//}
-//
-//@Composable
-//private fun DirectionButton(
-//    direction: Direction,
-//    onClick: () -> Unit,
-//    modifier: Modifier = Modifier
-//) {
-//    val icon = when (direction) {
-//        Direction.UP -> Icons.Default.ArrowUpward
-//        Direction.DOWN -> Icons.Default.ArrowDownward
-//        Direction.LEFT -> Icons.AutoMirrored.Filled.ArrowBack
-//        Direction.RIGHT -> Icons.AutoMirrored.Filled.ArrowForward
-//    }
-//
-//    IconButton(
-//        onClick = onClick,
-//        modifier = modifier
-//            .size(44.dp)
-//            .clip(RoundedCornerShape(5.dp)),
-//        colors = IconButtonDefaults.iconButtonColors(
-//            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-//            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-//        )
-//    ) {
-//        Icon(
-//            imageVector = icon,
-//            contentDescription = null,
-//            modifier = Modifier.size(22.dp)
-//        )
-//    }
-//}
-//
-//@Composable
-//private fun StatusCard(
-//    title: String,
-//    subtitle: String,
-//    modifier: Modifier = Modifier
-//) {
-//    Row(
-//        modifier = modifier
-//            .clip(RoundedCornerShape(18.dp))
-//            .background(MaterialTheme.colorScheme.surfaceVariant)
-//            .padding(horizontal = 16.dp, vertical = 12.dp),
-//        verticalAlignment = Alignment.CenterVertically,
-//        horizontalArrangement = Arrangement.spacedBy(12.dp)
-//    ) {
-//        Column(Modifier.weight(1f, fill = false)) {
-//            Text(
-//                text = title,
-//                style = MaterialTheme.typography.titleSmall,
-//                color = MaterialTheme.colorScheme.onSurfaceVariant
-//            )
-//            Text(
-//                text = subtitle,
-//                style = MaterialTheme.typography.bodySmall,
-//                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-//                maxLines = 1
-//            )
-//        }
-//
-//        Box(
-//            modifier = Modifier
-//                .clip(RoundedCornerShape(18.dp))
-//                .background(MaterialTheme.colorScheme.secondaryContainer)
-//                .padding(8.dp)
-//        ) {
-//            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-//                Icon(
-//                    imageVector = Icons.Default.Settings,
-//                    contentDescription = null,
-//                    modifier = Modifier.size(18.dp),
-//                    tint = MaterialTheme.colorScheme.onSecondaryContainer
-//                )
-//                Box(
-//                    modifier = Modifier
-//                        .size(18.dp)
-//                        .clip(RoundedCornerShape(18.dp))
-//                        .background(MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.5f))
-//                )
-//            }
-//        }
-//    }
-//}
-//
-//
-////package com.sc2079.androidcontroller.features.map.ui
-////
-////import androidx.compose.runtime.*
-////import androidx.lifecycle.viewmodel.compose.viewModel
-////import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
-////import com.sc2079.androidcontroller.features.map.data.local.MapPreferencesDataSource
-////import com.sc2079.androidcontroller.features.map.data.repository.MapRepositoryImpl
-////import com.sc2079.androidcontroller.features.map.domain.model.MapEditMode
-////import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
-////import com.sc2079.androidcontroller.features.map.presentation.MapViewModelFactory
-////import com.sc2079.androidcontroller.features.map.presentation.RobotProtocol
-////import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
-////
-////@Composable
-////fun MappingHomeScreen(
-////    bluetoothViewModel: BluetoothViewModel
-////) {
-////    // Simple local wiring; later you can inject with DI.
-////    val context = androidx.compose.ui.platform.LocalContext.current
-////    val repo = remember { MapRepositoryImpl(MapPreferencesDataSource(context.applicationContext)) }
-////
-////    val mapViewModel: MapViewModel = viewModel(factory = MapViewModelFactory(repo))
-////    val uiState by mapViewModel.uiState.collectAsState()
-////
-////    // Process only new robot messages (so recomposition doesn't re-apply)
-////    val btUi by bluetoothViewModel.bluetoothUiState.collectAsState()
-////    var lastProcessedIdx by remember { mutableIntStateOf(0) }
-////
-////    // Apply incoming messages to map state (C10/C9)
-////    LaunchedEffect(btUi.messages.size) {
-////        val msgs = btUi.messages
-////        for (i in lastProcessedIdx until msgs.size) {
-////            val m = msgs[i]
-////            if (m.fromRobot) mapViewModel.applyRobotMessage(m.messageBody)
-////        }
-////        lastProcessedIdx = msgs.size
-////    }
-////
-////    // Face picker dialog state
-////    var facePickerForObstacle by remember { mutableStateOf<Int?>(null) }
-////    val obstacleNo = facePickerForObstacle
-////
-////    MappingScreen(
-////        uiState = uiState,
-////        onSetMode = { mapViewModel.setEditMode(it) },
-////        onReset = { mapViewModel.resetAll() },
-////        onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
-////        onSaveMap = { mapViewModel.saveCurrentMap(it) },
-////        onLoadMap = { mapViewModel.loadMap(it) },
-////        onDeleteMap = { mapViewModel.deleteMap(it) },
-////
-////        onTapCell = { x, y ->
-////            val added = mapViewModel.onTapCell(x, y)
-////            if (added != null) {
-////                bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(added))
-////            }
-////        },
-////        onTapObstacleForFace = { no ->
-////            if (uiState.editMode == MapEditMode.ChangeObstacleFace) {
-////                facePickerForObstacle = no
-////            }
-////        },
-////        onStartDragObstacle = { /* no-op */ },
-////        onDragObstacleToCell = { no, x, y ->
-////            val moved = mapViewModel.onDragObstacle(no, x, y)
-////            if (moved != null) bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(moved))
-////        },
-////        onDragOutsideRemove = { no ->
-////            val removed = mapViewModel.removeObstacleByNo(no)
-////            if (removed != null) bluetoothViewModel.sendMessage(RobotProtocol.removeObstacle(removed))
-////        },
-////        onEndDrag = { /* no-op */ }
-////    )
-////
-////    if (obstacleNo != null) {
-////        val current = uiState.obstacles.firstOrNull { it.obstacleId == obstacleNo }?.faceDir ?: FaceDir.UP
-////        DirectionPickerDialog(
-////            title = "Obstacle $obstacleNo face",
-////            initial = current,
-////            onDismiss = { facePickerForObstacle = null },
-////            onConfirm = { newFace ->
-////                val updated = mapViewModel.setObstacleFace(obstacleNo, newFace)
-////                if (updated != null) bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(updated))
-////                facePickerForObstacle = null
-////            }
-////        )
-////    }
-////}
