@@ -7,6 +7,7 @@ import com.sc2079.androidcontroller.features.map.domain.model.MapEditMode
 import com.sc2079.androidcontroller.features.map.domain.model.Obstacle
 import com.sc2079.androidcontroller.features.map.domain.repository.MapRepository
 import com.sc2079.androidcontroller.features.map.domain.model.MapSnapshot
+import com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
 import com.sc2079.androidcontroller.features.map.domain.usecase.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -110,31 +111,53 @@ class MapViewModel(
         return if (before != mapSnapshot) mapSnapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } else null
     }
 
-    fun applyRobotMessage(raw: String) {
-        val events = RobotMessageParser.parse(raw)
-        if (events.isEmpty()) return
-
+    /**
+     * Function to ensure messages from robot apply changes
+     */
+    fun applyRobotEvent(event: RobotInboundEvent) {
         var s = mapSnapshot
-        var status: String? = null
 
-        for (e in events) {
-            when (e) {
-                is RobotInboundEvent.StatusEvent -> status = e.status
-                is RobotInboundEvent.RobotPoseEvent -> {
-                    s = setRobotPosition(s, e.x, e.y, e.dir)
-                }
-                is RobotInboundEvent.TargetEvent -> {
-                    // Java used cmd[1]-1 for internal; checklist uses obstacle number directly.
-                    // We follow checklist: obstacleNo matches displayed obstacle number.
-                    s = updateObstacleTargetId(s, e.obstacleId, e.targetId)
-                }
+        when (event) {
+            is RobotInboundEvent.RobotPositionEvent -> {
+                s = setRobotPosition(s, event.x, event.y, event.faceDir)
+                 _uiState.update { it.copy(robotStatus = "ROBOT,${event.x},${event.y},${event.faceDir}") }
+            }
+
+            is RobotInboundEvent.TargetEvent -> {
+                s = updateObstacleTargetId(s, event.obstacleId, event.targetId)
+                 _uiState.update { it.copy(robotStatus = "TARGET,${event.obstacleId},${event.targetId}") }
             }
         }
 
         mapSnapshot = s
-        status?.let { _uiState.update { it.copy(robotStatus = it.robotStatus.ifBlank { "" }.let { _ -> status }) } }
         publish()
     }
+
+//    fun applyRobotMessage(raw: String) {
+//        val events = RobotMessageParser.parse(raw)
+//        if (events.isEmpty()) return
+//
+//        var s = mapSnapshot
+//        var status: String? = null
+//
+//        for (e in events) {
+//            when (e) {
+//                is RobotInboundEvent.StatusEvent -> status = e.status
+//                is RobotInboundEvent.RobotPoseEvent -> {
+//                    s = setRobotPosition(s, e.x, e.y, e.dir)
+//                }
+//                is RobotInboundEvent.TargetEvent -> {
+//                    // Java used cmd[1]-1 for internal; checklist uses obstacle number directly.
+//                    // We follow checklist: obstacleNo matches displayed obstacle number.
+//                    s = updateObstacleTargetId(s, e.obstacleId, e.targetId)
+//                }
+//            }
+//        }
+//
+//        mapSnapshot = s
+//        status?.let { _uiState.update { it.copy(robotStatus = it.robotStatus.ifBlank { "" }.let { _ -> status }) } }
+//        publish()
+//    }
 
     fun saveCurrentMap(name: String) {
         viewModelScope.launch {

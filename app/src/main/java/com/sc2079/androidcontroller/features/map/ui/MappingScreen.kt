@@ -40,7 +40,8 @@ fun MappingScreen(
         GridMapCanvas(
             uiState = uiState,
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
+//                .fillMaxWidth()
                 .weight(1f),
             onTapCell = onTapCell,
             onTapObstacleForFace = onTapObstacleForFace,

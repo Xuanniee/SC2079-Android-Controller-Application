@@ -1,4 +1,4 @@
-package com.sc2079.androidcontroller.features.map.ui
+package com.sc2079.androidcontroller.features.map.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,13 +22,11 @@ import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.features.map.domain.model.MapEditMode
 import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
 import com.sc2079.androidcontroller.features.map.presentation.RobotProtocol
+import com.sc2079.androidcontroller.features.map.presentation.RobotProtocolParser
+import com.sc2079.androidcontroller.features.map.ui.MappingScreen
 import com.sc2079.androidcontroller.features.map.ui.components.DirectionPickerDialog
 import com.sc2079.androidcontroller.features.map.ui.components.MessageLogBottomDialog
-
-/**
- * Direction enum for arrow buttons
- */
-enum class Direction { UP, DOWN, LEFT, RIGHT }
+import com.sc2079.androidcontroller.features.map.ui.sections.RightPanel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,18 +43,38 @@ fun MappingHomeScreen(
     var showLogSheet by remember { mutableStateOf(false) }
     val logItems = remember(btUi.messages) {
         btUi.messages
-            .filter { RobotProtocol.validateProtocolMessage(it.messageBody) }
+            .filter { message ->
+                // Get the message and filter to allow it as long as it is protocl or robot meessage
+                val messageBody = message.messageBody
+                RobotProtocol.validateProtocolMessage(messageBody) || RobotProtocol.validateRobotMessage(messageBody)
+            }
             .map { Message(fromRobot = it.fromRobot, messageBody = it.messageBody) }
     }
 
-
+    // Runs only when a new message is detected
     LaunchedEffect(btUi.messages.size) {
-        val msgs = btUi.messages
-        for (i in lastProcessedIdx until msgs.size) {
-            val m = msgs[i]
-            if (m.fromRobot) mapViewModel.applyRobotMessage(m.messageBody)
+        // Process new messages starting from the previous lastProcessedIdx
+        val messages = btUi.messages
+
+        for (i in lastProcessedIdx until messages.size) {
+            // Only parse messages from Robot, not the User
+            val message = messages[i]
+            if (!message.fromRobot) {
+                continue
+            }
+
+            // Only accept robot events (ROBOT / TARGET). Ignore anything else.
+            val events = RobotProtocolParser.parseRobotBatch(message.messageBody)
+            for (e in events) {
+                mapViewModel.applyRobotEvent(e)
+            }
+
+            // For single event
+//            val event = RobotProtocolParser.parseRobot(message.messageBody) ?: continue
+//            // Apply the Robot Event to change
+//            mapViewModel.applyRobotEvent(event)
         }
-        lastProcessedIdx = msgs.size
+        lastProcessedIdx = messages.size
     }
 
     // Ensure we wait until obstacles update, then we sync the UI to show the new obstacles
@@ -83,8 +101,12 @@ fun MappingHomeScreen(
                 append("RobotStatus: ${uiState.robotStatus.take(64)} • ")
             }
 
-            // Track the BT Messages
-            val last = btUi.messages.lastOrNull()
+            // Track the BT Messages and show the latest filtered message
+            val last = btUi.messages.lastOrNull { message ->
+                // Only robot or protocol message allowed
+                val messageBody = message.messageBody
+                RobotProtocol.validateProtocolMessage(messageBody) || RobotProtocol.validateRobotMessage(messageBody)
+            }
             if (last == null) {
                 append("No messages yet")
             }
@@ -132,13 +154,14 @@ fun MappingHomeScreen(
             if (isLandscape) {
                 // --- Tablet / Landscape: Left map, right panel (like your screenshot)
                 Row(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // LEFT: Map surface
                     Card(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(0.7f)
                             .fillMaxHeight(),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -161,7 +184,11 @@ fun MappingHomeScreen(
                                     mapViewModel.resetAll()
                                     bluetoothViewModel.sendMessage(RobotProtocol.clear())
                                     // TODO Need decide if we want to send an empty list when we reset the obstacle
-                                    bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList()))
+                                    bluetoothViewModel.sendMessage(
+                                        RobotProtocol.sendObstacleList(
+                                            emptyList()
+                                        )
+                                    )
                                 },
                                 onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
                                 onSaveMap = { mapViewModel.saveCurrentMap(it) },
@@ -185,7 +212,8 @@ fun MappingHomeScreen(
                                         // Placing Robot Position
                                         MapEditMode.SetStart -> {
                                             // For updating the starting placement of robot, and not moving
-                                            val newRobotPosition = mapViewModel.uiState.value.robotPosition
+                                            val newRobotPosition =
+                                                mapViewModel.uiState.value.robotPosition
                                             if (newRobotPosition != null && newRobotPosition != oldRobotPosition) {
                                                 // Send Message for Placing Robot
                                                 bluetoothViewModel.sendMessage(
@@ -198,7 +226,11 @@ fun MappingHomeScreen(
                                         MapEditMode.PlaceObstacle -> {
                                             // If no obstacle previously, we can send a message indicating we added it
                                             if (added != null) {
-                                                bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(added))
+                                                bluetoothViewModel.sendMessage(
+                                                    RobotProtocol.upsertObstacle(
+                                                        added
+                                                    )
+                                                )
                                             }
                                         }
 
@@ -246,6 +278,7 @@ fun MappingHomeScreen(
                     RightPanel(
                         modifier = Modifier
                             .widthIn(min = 320.dp, max = 420.dp)
+                            .weight(0.3f)
                             .fillMaxHeight(),
                         editMode = uiState.editMode,
                         savedMaps = uiState.savedMaps,
@@ -309,7 +342,11 @@ fun MappingHomeScreen(
                                 mapViewModel.resetAll()
                                 bluetoothViewModel.sendMessage(RobotProtocol.clear())
                                 // TODO Need decide if we want to send an empty list when we reset the obstacle
-                                bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList()))
+                                bluetoothViewModel.sendMessage(
+                                    RobotProtocol.sendObstacleList(
+                                        emptyList()
+                                    )
+                                )
                             },
                             onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
                             onSaveMap = { mapViewModel.saveCurrentMap(it) },
@@ -354,16 +391,25 @@ fun MappingHomeScreen(
                                 }
                             },
                             onTapObstacleForFace = { no ->
-                                if (uiState.editMode == MapEditMode.ChangeObstacleFace) facePickerForObstacle = no
+                                if (uiState.editMode == MapEditMode.ChangeObstacleFace) facePickerForObstacle =
+                                    no
                             },
                             onStartDragObstacle = { },
                             onDragObstacleToCell = { no, x, y ->
                                 val moved = mapViewModel.onDragObstacle(no, x, y)
-                                if (moved != null) bluetoothViewModel.sendMessage(RobotProtocol.upsertObstacle(moved))
+                                if (moved != null) bluetoothViewModel.sendMessage(
+                                    RobotProtocol.upsertObstacle(
+                                        moved
+                                    )
+                                )
                             },
                             onDragOutsideRemove = { no ->
                                 val removed = mapViewModel.removeObstacleByNo(no)
-                                if (removed != null) bluetoothViewModel.sendMessage(RobotProtocol.removeObstacle(removed))
+                                if (removed != null) bluetoothViewModel.sendMessage(
+                                    RobotProtocol.removeObstacle(
+                                        removed
+                                    )
+                                )
                             },
                             onEndDrag = { }
                         )
@@ -482,348 +528,4 @@ fun MappingHomeScreen(
             }
         )
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RightPanel(
-    editMode: MapEditMode,
-    savedMaps: List<String>,
-    selectedLoadName: String,
-    loadExpanded: Boolean,
-    onLoadExpandedChange: (Boolean) -> Unit,
-    onPickLoadName: (String) -> Unit,
-    onSetMode: (MapEditMode) -> Unit,
-    onReset: () -> Unit,
-    onSave: () -> Unit,
-    onLoad: () -> Unit,
-    statusTitle: String,
-    statusSubtitle: String,
-    onOpenLog: () -> Unit,
-    // To sync obstacle list with robot
-    onSync: () -> Unit,
-    onDirection: (Direction) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        // Map Mode card (top)
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(Modifier.padding(14.dp)) {
-                Text(
-                    text = "Map Mode: ${editModeLabel(editMode)}",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    ModeIcon(
-                        icon = Icons.Default.Settings,
-                        selected = editMode == MapEditMode.Cursor,
-                        onClick = { onSetMode(MapEditMode.Cursor) }
-                    )
-                    ModeIcon(
-                        icon = Icons.Default.Flag,
-                        selected = editMode == MapEditMode.SetStart,
-                        onClick = { onSetMode(MapEditMode.SetStart) }
-                    )
-                    ModeIcon(
-                        icon = Icons.Default.Edit,
-                        selected = editMode == MapEditMode.PlaceObstacle,
-                        onClick = { onSetMode(MapEditMode.PlaceObstacle) }
-                    )
-                    ModeIcon(
-                        icon = Icons.Default.OpenWith,
-                        selected = editMode == MapEditMode.DragObstacle,
-                        onClick = { onSetMode(MapEditMode.DragObstacle) }
-                    )
-                    ModeIcon(
-                        icon = Icons.Default.Gesture,
-                        selected = editMode == MapEditMode.ChangeObstacleFace,
-                        onClick = { onSetMode(MapEditMode.ChangeObstacleFace) }
-                    )
-                }
-
-                Spacer(Modifier.height(14.dp))
-
-                // Actions row 1: Reset + Save
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    FilledTonalButton(
-                        onClick = onReset,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Reset Map")
-                    }
-
-                    FilledTonalButton(
-                        onClick = onSave,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Save Map")
-                    }
-                }
-
-                Spacer(Modifier.height(10.dp))
-
-                // Actions row 2: Load button + Sync Robot Messages
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-//                    ExposedDropdownMenuBox(
-//                        expanded = loadExpanded,
-//                        onExpandedChange = { onLoadExpandedChange(!loadExpanded) },
-//                        modifier = Modifier.weight(1f)
-//                    ) {
-//                        OutlinedTextField(
-//                            modifier = Modifier
-//                                .menuAnchor()
-//                                .fillMaxWidth(),
-//                            readOnly = true,
-//                            value = if (savedMaps.isNotEmpty()) selectedLoadName else "No saved maps",
-//                            onValueChange = {},
-//                            label = { Text("Load Map") },
-//                            singleLine = true,
-//                            trailingIcon = {
-//                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = loadExpanded)
-//                            },
-//                            enabled = savedMaps.isNotEmpty()
-//                        )
-//
-//                        ExposedDropdownMenu(
-//                            expanded = loadExpanded && savedMaps.isNotEmpty(),
-//                            onDismissRequest = { onLoadExpandedChange(false) }
-//                        ) {
-//                            savedMaps.forEach { name ->
-//                                DropdownMenuItem(
-//                                    text = { Text(name) },
-//                                    onClick = {
-//                                        onPickLoadName(name)
-//                                        onLoadExpandedChange(false)
-//                                    }
-//                                )
-//                            }
-//                        }
-//                    }
-
-                    // Load Maps
-                    FilledTonalButton(
-                        onClick = onLoad,
-                        enabled = savedMaps.isNotEmpty(),
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.Default.FolderOpen, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Load")
-                    }
-
-                    // Robot Sync Button
-                    FilledTonalButton(
-                        // Sync with Robot
-                        onClick = onSync,
-                        enabled = true,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.Default.Sync, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Sync")
-                    }
-
-                }
-            }
-        }
-
-        // Controls card (bottom)
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Controls",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                StatusRow(
-                    title = statusTitle,
-                    subtitle = statusSubtitle,
-                    onOpenLog = onOpenLog,
-                )
-
-                // D-pad (cross layout like screenshot)
-                DPad(onDirection = onDirection, modifier = Modifier.align(Alignment.CenterHorizontally))
-            }
-        }
-    }
-}
-
-@Composable
-private fun ModeIcon(
-    icon: ImageVector,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val bg = if (selected) {
-        MaterialTheme.colorScheme.surface
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-    }
-
-    val stroke = if (selected) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
-
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(14.dp),
-        color = bg,
-        border = ButtonDefaults.outlinedButtonBorder.copy(brush = SolidColor(stroke))
-    ) {
-        Box(
-            modifier = Modifier.size(44.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-    }
-}
-
-@Composable
-private fun StatusRow(
-    title: String,
-    subtitle: String,
-    onOpenLog: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall)
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                maxLines = 1
-            )
-        }
-//        IconButton(onClick = { /* settings */ }) {
-//            Icon(Icons.Default.Settings, contentDescription = "Settings")
-//        }
-        // Open Message Log Button
-        IconButton(onClick = onOpenLog) {
-            Icon(Icons.Default.List, contentDescription = "Message Log")
-        }
-
-
-//        // simple "toggle" dot to mimic screenshot
-//        Switch(
-//            checked = true,
-//            onCheckedChange = null,
-//            enabled = false
-//        )
-    }
-}
-
-@Composable
-private fun DPad(
-    onDirection: (Direction) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        DirectionButton(
-            direction = Direction.UP,
-            onClick = { onDirection(Direction.UP) }
-        )
-
-        Spacer(Modifier.height(5.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            DirectionButton(Direction.LEFT, onClick = { onDirection(Direction.LEFT) })
-            Spacer(Modifier.size(44.dp)) // empty center (like screenshot)
-            DirectionButton(Direction.RIGHT, onClick = { onDirection(Direction.RIGHT) })
-        }
-
-        Spacer(Modifier.height(5.dp))
-
-        DirectionButton(
-            direction = Direction.DOWN,
-            onClick = { onDirection(Direction.DOWN) }
-        )
-    }
-}
-
-@Composable
-private fun DirectionButton(
-    direction: Direction,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val icon = when (direction) {
-        Direction.UP -> Icons.Default.ArrowUpward
-        Direction.DOWN -> Icons.Default.ArrowDownward
-        Direction.LEFT -> Icons.AutoMirrored.Filled.ArrowBack
-        Direction.RIGHT -> Icons.AutoMirrored.Filled.ArrowForward
-    }
-
-    FilledTonalIconButton(
-        onClick = onClick,
-        modifier = modifier.size(44.dp),
-        shape = RoundedCornerShape(14.dp)
-    ) {
-        Icon(imageVector = icon, contentDescription = null)
-    }
-}
-
-private fun editModeLabel(mode: MapEditMode): String = when (mode) {
-    MapEditMode.Cursor -> "None"
-    MapEditMode.SetStart -> "Place Robot"
-    MapEditMode.PlaceObstacle -> "Add Obstacle"
-    MapEditMode.DragObstacle -> "Drag Obstacle"
-    MapEditMode.ChangeObstacleFace -> "Change Face"
 }

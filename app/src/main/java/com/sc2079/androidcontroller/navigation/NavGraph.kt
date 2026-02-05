@@ -13,7 +13,7 @@ import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothVie
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothChatScreen
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothSetupScreen
 import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
-import com.sc2079.androidcontroller.features.map.ui.MappingHomeScreen
+import com.sc2079.androidcontroller.features.map.ui.screens.MappingHomeScreen
 import com.sc2079.androidcontroller.ui.screens.HomeScreen
 
 /**

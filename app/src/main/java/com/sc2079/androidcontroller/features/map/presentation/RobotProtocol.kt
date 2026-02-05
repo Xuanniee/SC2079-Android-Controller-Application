@@ -7,8 +7,12 @@ import com.sc2079.androidcontroller.features.map.domain.model.RobotPosition
 object RobotProtocol {
     private const val mapUnit: Int = 1
 
+    fun validateRobotMessage(raw: String): Boolean {
+        return RobotProtocolParser.parseRobot(raw) != null
+    }
+
     fun validateProtocolMessage(raw: String): Boolean {
-        return RobotProtocolParser.parse(raw) != null
+        return RobotProtocolParser.parseProtocol(raw) != null
     }
 
     fun clear(): String = "CLEAR"
@@ -31,6 +35,9 @@ object RobotProtocol {
         return "STATUS, OBSTACLE LIST, ${obstacles.size}, $payload"
     }
 
+    /**
+     * From App to Robot Messages
+     */
     fun placeRobot(robotPosition: RobotPosition): String =
         "STATUS, ROBOT PLACEMENT, ${robotPosition.x * mapUnit}, ${robotPosition.y * mapUnit}, ${robotPosition.faceDir.name}"
 

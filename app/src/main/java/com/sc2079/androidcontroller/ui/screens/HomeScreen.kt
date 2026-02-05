@@ -117,8 +117,7 @@ import com.sc2079.androidcontroller.features.controller.domain.model.ActivitySta
 import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
 import com.sc2079.androidcontroller.features.controller.domain.usecase.MoveRobotUseCase
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
-import com.sc2079.androidcontroller.features.map.presentation.RobotInboundEvent
-import com.sc2079.androidcontroller.features.map.presentation.RobotMessageParser
+import com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
 import kotlinx.coroutines.delay
 import java.nio.charset.Charset
 import com.sc2079.androidcontroller.ui.components.home.ControlsCard
@@ -126,6 +125,7 @@ import com.sc2079.androidcontroller.ui.components.home.MapCard
 import com.sc2079.androidcontroller.ui.components.map.MapActionsCard
 import com.sc2079.androidcontroller.ui.theme.CustomSuccess
 import com.sc2079.androidcontroller.features.map.presentation.RobotProtocol
+import com.sc2079.androidcontroller.features.map.presentation.RobotProtocolParser
 import com.sc2079.androidcontroller.ui.theme.SC2079AndroidControllerApplicationTheme
 
 /**
@@ -200,30 +200,40 @@ fun HomeScreen(
                 )
                 return@collect // Don't process further if it's a stopped message
             }
-            
+
+            /**
+             * New Parser
+             */
             // Parse messages to check for valid ROBOT position messages ("ROBOT, x, y, direction")
-            val events = RobotMessageParser.parse(message)
-            
+            val events = RobotProtocolParser.parseRobotBatch(message)
+
             // Process ROBOT messages to update robot position and set moving status
             events.forEach { event ->
-                if (event is RobotInboundEvent.RobotPoseEvent) {
-                    // Update robotStatus with new position from ROBOT message
-                    // This indicates the robot is moving (only when ROBOT message is received)
-                    robotStatus = RobotStatus(
-                        x = event.x,
-                        y = event.y,
-                        faceDir = event.dir,
-                        statusMessage = "Moving",
-                        isMoving = true
-                    )
-                    
-                    // Reset isMoving to false after 2 seconds (robot stopped moving)
-                    robotScope.launch {
-                        delay(2000)
-                        robotStatus = robotStatus?.copy(
-                            isMoving = false,
-                            statusMessage = "Stopped"
+                when (event) {
+                    is RobotInboundEvent.RobotPositionEvent -> {
+                        // Update robotStatus with new position from ROBOT message
+                        // This indicates the robot is moving (only when ROBOT message is received)
+                        robotStatus = RobotStatus(
+                            x = event.x,
+                            y = event.y,
+                            faceDir = event.faceDir,
+                            statusMessage = "Moving",
+                            isMoving = true
                         )
+
+                        mapViewModel.applyRobotEvent(event)
+
+                        // Reset isMoving to false after 2 seconds (robot stopped moving)
+                        robotScope.launch {
+                            delay(2000)
+                            robotStatus = robotStatus?.copy(
+                                isMoving = false,
+                                statusMessage = "Stopped"
+                            )
+                        }
+                    }
+                    is RobotInboundEvent.TargetEvent -> {
+                        mapViewModel.applyRobotEvent(event)
                     }
                 }
             }

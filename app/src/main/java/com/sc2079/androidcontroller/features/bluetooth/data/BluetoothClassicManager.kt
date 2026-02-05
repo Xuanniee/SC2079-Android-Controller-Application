@@ -25,10 +25,19 @@ import java.util.UUID
  *
  * 2. Provides us with a coroutine scope to run bg tasks
  */
+
 class BluetoothClassicManager(
     private val controllerAppContext: Context,
     private val bluetoothScope: CoroutineScope
 ) {
+    init {
+        // Ensure not recreating a new one when rotate screens
+        android.util.Log.w(
+            "BT_LIFECYCLE",
+            "BT_TEST: BluetoothClassicManager CREATED hash=${System.identityHashCode(this)}"
+        )
+    }
+
     // Vibration manager for haptic feedback
     private val vibrationManager = com.sc2079.androidcontroller.features.vibration.VibrationManager(controllerAppContext)
     /**
@@ -325,6 +334,14 @@ class BluetoothClassicManager(
     // Attempt to disconnect to a server via BT
     // @param userInitiated Set to true if user manually disconnected, false if unexpected disconnection
     fun disconnectBluetooth(userInitiated: Boolean = false) {
+        android.util.Log.w(
+            "BT_LIFECYCLE",
+            "BT_TEST: disconnectBluetooth(userInitiated=$userInitiated) hash=${
+                System.identityHashCode(
+                    this
+                )
+            }"
+        )
         // Store whether this is user-initiated before disconnecting
         val wasConnected = _bluetoothConnState.value is BluetoothConnState.Connected
         isUserInitiatedDisconnect = userInitiated
@@ -390,6 +407,10 @@ class BluetoothClassicManager(
      */
     // Starts listening for messages on BT Conn
     private fun startReaderLoop() {
+        android.util.Log.w(
+            "BT_LIFECYCLE",
+            "BT_TEST: startReaderLoop hash=${System.identityHashCode(this)}"
+        )
         // Cancel any old existing BT Jobs
         readerJob?.cancel()
 
@@ -423,6 +444,10 @@ class BluetoothClassicManager(
 
     // Sends instructions/msgs to robot
     fun writeMessage(bytes: ByteArray) {
+        android.util.Log.w(
+            "BT_LIFECYCLE",
+            "BT_TEST: writeMessage hash=\${System.identityHashCode(this)} outputStreamNull=\${outputStream == null}"
+        )
         bluetoothScope.launch(Dispatchers.IO) {
             try {
                 // Retrieve a reference to the outputstream

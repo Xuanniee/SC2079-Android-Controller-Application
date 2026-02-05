@@ -105,6 +105,10 @@ class BluetoothViewModel(
      * Entry Point when ViewModel is created to start background takss
      */
     init {
+        android.util.Log.w(
+            "BT_LIFECYCLE",
+            "BluetoothViewModel CREATED — hash=${System.identityHashCode(this)}"
+        )
         // Use a coroutine to listen for messages from the Robot via a background thread
         viewModelScope.launch {
             // Waits for incoming data and converts it to a new message to be appended
@@ -236,12 +240,17 @@ class BluetoothViewModel(
 
     // Override the onClear hook to release all BT sources if app is closed
     override fun onCleared() {
+        // Check if it runs while rotating screen
         super.onCleared()
+        android.util.Log.e(
+            "BT_LIFECYCLE",
+            "BluetoothViewModel.onCleared() CALLED — hash=${System.identityHashCode(this)}"
+        )
 
         // Cancel Job before disconnect
         try {
             bluetoothScanJob?.cancel()
         } catch (_: Exception) {}
-        bluetoothManager.disconnectBluetooth(userInitiated = true) // App closing is user-initiated
+        bluetoothManager.disconnectBluetooth(userInitiated = true)
     }
 }
