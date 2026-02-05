@@ -113,7 +113,7 @@ fun AppScaffold(
     val currentRoute = navBackStackEntry?.destination?.route
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
-    // Define navigation items - only Home and Bluetooth
+    // Define navigation items
     val navigationItems = listOf(
         NavigationItem(
             titleResId = R.string.nav_home,
@@ -128,6 +128,12 @@ fun AppScaffold(
             descriptionResId = R.string.bluetooth_connect_message
         ),
         NavigationItem(
+            titleResId = R.string.nav_bluetooth_connection,
+            icon = Icons.Default.Bluetooth, // use available icon to avoid missing ref
+            screen = Screen.BluetoothConnection,
+            descriptionResId = R.string.bluetooth_connect_message
+        ),
+        NavigationItem(
             titleResId = R.string.map,
             icon = Icons.Default.Map,
             screen = Screen.Map,
@@ -139,6 +145,7 @@ fun AppScaffold(
     val currentTitle = when (currentRoute) {
         Screen.Home.route -> stringResource(R.string.device_connected)
         Screen.Bluetooth.route -> stringResource(R.string.bluetooth_title)
+        Screen.BluetoothConnection.route -> stringResource(R.string.nav_bluetooth_connection)
         else -> stringResource(R.string.app_name)
     }
     

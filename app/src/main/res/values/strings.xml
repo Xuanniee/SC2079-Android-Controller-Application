@@ -4,6 +4,7 @@
     <!-- Navigation -->
     <string name="nav_home">Home</string>
     <string name="nav_bluetooth">Bluetooth</string>
+    <string name="nav_bluetooth_connection">Bluetooth Connection</string>
     <string name="nav_navigation">Navigation</string>
     <string name="nav_theme">Theme</string>
     <string name="nav_language">Language</string>

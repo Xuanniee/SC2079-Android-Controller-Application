@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothChatScreen
+import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothConnectionScreen
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothSetupScreen
 import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
 import com.sc2079.androidcontroller.features.map.ui.screens.MappingHomeScreen
@@ -45,6 +46,10 @@ fun NavGraph(
             BluetoothFlowScreen(bluetoothViewModel = bluetoothViewModel)
         }
 
+        composable(Screen.BluetoothConnection.route) {
+            BluetoothConnectionFlowScreen(bluetoothViewModel = bluetoothViewModel)
+        }
+
         composable(Screen.Map.route) {
             MappingHomeScreen(
                 bluetoothViewModel = bluetoothViewModel, mapViewModel = mapViewModel
@@ -61,6 +66,25 @@ private fun BluetoothFlowScreen(
 
     if (!showChat) {
         BluetoothSetupScreen(
+            bluetoothViewModel = bluetoothViewModel,
+            onOpenChat = { showChat = true }
+        )
+    } else {
+        BluetoothChatScreen(
+            bluetoothViewModel = bluetoothViewModel,
+            onBack = { showChat = false }
+        )
+    }
+}
+
+@Composable
+private fun BluetoothConnectionFlowScreen(
+    bluetoothViewModel: BluetoothViewModel
+) {
+    var showChat by remember { mutableStateOf(false) }
+
+    if (!showChat) {
+        BluetoothConnectionScreen(
             bluetoothViewModel = bluetoothViewModel,
             onOpenChat = { showChat = true }
         )
