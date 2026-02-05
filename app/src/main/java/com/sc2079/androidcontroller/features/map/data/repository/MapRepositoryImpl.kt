@@ -50,7 +50,7 @@ class MapRepositoryImpl(
         val mapJsonObject = JSONObject()
 
         // Place all the properties of a MapSnapshot into the JSON Object
-        mapJsonObject.put("nextObstacleId", mapSnapshot.nextObstacleId)
+//        mapJsonObject.put("nextObstacleId", mapSnapshot.nextObstacleId)
         // Store the robotPosition into a JSON object
         val robotPosition = mapSnapshot.robotPosition?.let {
             JSONObject()
@@ -79,8 +79,8 @@ class MapRepositoryImpl(
 
     // Deserialise a JSONObject back into a MapSnapshot to be used
     private fun decodeJsonToMap(obj: JSONObject): MapSnapshot {
-        // Extract all the properties of a MapSnapshot from the JSONObject
-        val nextObstacleId = obj.optInt("nextObstacleId", 1)
+//        // Extract all the properties of a MapSnapshot from the JSONObject
+//        val nextObstacleId = obj.optInt("nextObstacleId", 1)
 
         // Extract the RobotPosition JSONObject if it exists
         val robotPosition = obj.opt("robotPosition").let { robotPositionJsonRaw ->
@@ -109,8 +109,11 @@ class MapRepositoryImpl(
                     x = obstacle.getInt("x"),
                     y = obstacle.getInt("y"),
                     faceDir = FaceDir.valueOf(obstacle.getString("faceDir")),
-                    displayedTargetId = obstacle.opt("displayedTargetId")
-                        .let { if (it == null || it == JSONObject.NULL) null else it.toString() }
+                    displayedTargetId = obstacle
+                        .optInt("displayedTargetId", -1)
+                        .takeIf { it != -1 }
+//                    displayedTargetId = obstacle.opt("displayedTargetId")
+//                        .let { if (it == null || it == JSONObject.NULL) null else it.toString() }
                 )
             )
         }
@@ -119,7 +122,7 @@ class MapRepositoryImpl(
         return MapSnapshot(
             robotPosition = robotPosition,
             obstacles = obstacles.sortedBy { it.obstacleId },
-            nextObstacleId = nextObstacleId
+//            nextObstacleId = nextObstacleId
         )
     }
 }

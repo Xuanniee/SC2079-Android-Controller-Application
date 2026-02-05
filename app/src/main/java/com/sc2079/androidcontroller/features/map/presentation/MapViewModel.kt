@@ -30,11 +30,9 @@ class MapViewModel(
     private val setRobotPosition: SetRobotPositionUseCase = SetRobotPositionUseCase(),
     private val updateObstacleTargetId: UpdateObstacleTargetIdUseCase = UpdateObstacleTargetIdUseCase()
 ) : ViewModel() {
-    /**
-     *
-     */
-    private var snapshot: MapSnapshot = resetMap()
-
+    // SSOT for Map's data model e.g. list of obstacles
+    private var mapSnapshot: MapSnapshot = resetMap()
+    // StateFlow for UI to observe to rerender
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState
 
@@ -51,25 +49,34 @@ class MapViewModel(
     }
 
     fun resetAll() {
-        snapshot = resetMap()
-        _uiState.update { it.copy(robotStatus = "", editMode = MapEditMode.Cursor) }
+        // Reset the entire Map
+        mapSnapshot = resetMap()
+        // Update UI and Propagate
+        _uiState.update {
+            it.copy(robotStatus = "", editMode = MapEditMode.Cursor, robotPosition = null)
+        }
         publish()
     }
 
     fun onTapCell(x: Int, y: Int): Obstacle? {
         return when (_uiState.value.editMode) {
             MapEditMode.SetStart -> {
-                val dir = snapshot.robotPosition?.faceDir ?: FaceDir.UP
-                snapshot = setRobotPosition(snapshot, x, y, dir)
+                val dir = mapSnapshot.robotPosition?.faceDir ?: FaceDir.NORTH
+                mapSnapshot = setRobotPosition(mapSnapshot, x, y, dir)
                 publish()
                 null
             }
             MapEditMode.PlaceObstacle -> {
-                val before = snapshot
-                snapshot = addObstacle(snapshot, x, y)
+                // Store existing obstacles id into a hashset
+                val existingObstacleIds = mapSnapshot.obstacles.map { it.obstacleId }.toSet()
+
+                // Try adding the obstacle and update UI
+                mapSnapshot = addObstacle(mapSnapshot, x, y)
                 publish()
-                // return newly added (if any)
-                snapshot.obstacles.firstOrNull { it.obstacleId == snapshot.nextObstacleId - 1 && before.nextObstacleId != snapshot.nextObstacleId }
+
+                // return newly added obstacle if added else null
+                mapSnapshot.obstacles.firstOrNull { it.obstacleId !in existingObstacleIds }
+//                mapSnapshot.obstacles.firstOrNull { it.obstacleId == mapSnapshot.nextObstacleId - 1 && before.nextObstacleId != mapSnapshot.nextObstacleId }
             }
             MapEditMode.ChangeObstacleFace,
             MapEditMode.DragObstacle,
@@ -78,36 +85,36 @@ class MapViewModel(
     }
 
     fun onDragObstacle(obstacleNo: Int, x: Int, y: Int) : Obstacle? {
-        val before = snapshot
-        snapshot = moveObstacle(snapshot, obstacleNo, x, y)
+        val before = mapSnapshot
+        mapSnapshot = moveObstacle(mapSnapshot, obstacleNo, x, y)
         publish()
-        return if (before != snapshot) snapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } else null
+        return if (before != mapSnapshot) mapSnapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } else null
     }
 
     fun removeObstacleByNo(obstacleNo: Int): Obstacle? {
-        val existing = snapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } ?: return null
-        snapshot = removeObstacle(snapshot, obstacleNo)
+        val existing = mapSnapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } ?: return null
+        mapSnapshot = removeObstacle(mapSnapshot, obstacleNo)
         publish()
         return existing
     }
 
     fun clearRobotPosition() {
-        snapshot = snapshot.copy(robotPosition = null)
+        mapSnapshot = mapSnapshot.copy(robotPosition = null)
         publish()
     }
 
     fun setObstacleFace(obstacleNo: Int, face: FaceDir): Obstacle? {
-        val before = snapshot
-        snapshot = setObstacleFace(snapshot, obstacleNo, face)
+        val before = mapSnapshot
+        mapSnapshot = setObstacleFace(mapSnapshot, obstacleNo, face)
         publish()
-        return if (before != snapshot) snapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } else null
+        return if (before != mapSnapshot) mapSnapshot.obstacles.firstOrNull { it.obstacleId == obstacleNo } else null
     }
 
     fun applyRobotMessage(raw: String) {
         val events = RobotMessageParser.parse(raw)
         if (events.isEmpty()) return
 
-        var s = snapshot
+        var s = mapSnapshot
         var status: String? = null
 
         for (e in events) {
@@ -119,19 +126,19 @@ class MapViewModel(
                 is RobotInboundEvent.TargetEvent -> {
                     // Java used cmd[1]-1 for internal; checklist uses obstacle number directly.
                     // We follow checklist: obstacleNo matches displayed obstacle number.
-                    s = updateObstacleTargetId(s, e.obstacleNo, e.targetId)
+                    s = updateObstacleTargetId(s, e.obstacleId, e.targetId)
                 }
             }
         }
 
-        snapshot = s
+        mapSnapshot = s
         status?.let { _uiState.update { it.copy(robotStatus = it.robotStatus.ifBlank { "" }.let { _ -> status }) } }
         publish()
     }
 
     fun saveCurrentMap(name: String) {
         viewModelScope.launch {
-            mapRepository.saveMapSnapshot(name.trim(), snapshot)
+            mapRepository.saveMapSnapshot(name.trim(), mapSnapshot)
             refreshSavedMaps()
         }
     }
@@ -139,7 +146,7 @@ class MapViewModel(
     fun loadMap(name: String) {
         viewModelScope.launch {
             val loaded = mapRepository.loadMapSnapshot(name) ?: return@launch
-            snapshot = loaded
+            mapSnapshot = loaded
             publish()
         }
     }
@@ -161,8 +168,8 @@ class MapViewModel(
     private fun publish() {
         _uiState.update {
             it.copy(
-                robotPosition = snapshot.robotPosition,
-                obstacles = snapshot.obstacles.sortedBy { o -> o.obstacleId }
+                robotPosition = mapSnapshot.robotPosition,
+                obstacles = mapSnapshot.obstacles.sortedBy { obstacle -> obstacle.obstacleId }
             )
         }
     }

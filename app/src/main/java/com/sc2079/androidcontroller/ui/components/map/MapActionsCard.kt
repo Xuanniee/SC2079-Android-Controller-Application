@@ -65,11 +65,14 @@ fun MapActionsCard(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            /**
+             * TODO Removing splash effect for now as causing bugs
+             */
             // Confirmation Chip - always shown with splash effect
-            ChipWithSplash(
-                chipSplashTrigger = chipSplashTrigger,
-                modifier = Modifier.fillMaxWidth()
-            )
+//            ChipWithSplash(
+//                chipSplashTrigger = chipSplashTrigger,
+//                modifier = Modifier.fillMaxWidth()
+//            )
             
             // Map Mode Toolbar
             Text(

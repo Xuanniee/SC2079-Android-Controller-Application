@@ -9,7 +9,7 @@ data class Obstacle(
     // Direction that holds the number
     val faceDir: FaceDir,
     // Target value on the obstacle
-    val displayedTargetId: String?,
+    val displayedTargetId: Int?,
     // Coordinates
     val x: Int,
     val y: Int

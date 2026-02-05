@@ -8,6 +8,6 @@ data class MapSnapshot(
     val robotPosition: RobotPosition?,
     // Represent the state of all the obstacles in the Map. Can be empty list of obstacles
     val obstacles: List<Obstacle>,
-    // Indicates the next obstacleId to be used if user placed a new obstacle
-    val nextObstacleId: Int
+    // Outdated, replaced by function Indicates the next obstacleId to be used if user placed a new obstacle
+//    val nextObstacleId: Int
 )
