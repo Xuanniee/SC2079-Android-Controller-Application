@@ -121,12 +121,12 @@ fun AppScaffold(
             screen = Screen.Home,
             descriptionResId = R.string.nav_home
         ),
-        NavigationItem(
-            titleResId = R.string.nav_bluetooth,
-            icon = Icons.Default.Bluetooth,
-            screen = Screen.Bluetooth,
-            descriptionResId = R.string.bluetooth_connect_message
-        ),
+//        NavigationItem(
+//            titleResId = R.string.nav_bluetooth,
+//            icon = Icons.Default.Bluetooth,
+//            screen = Screen.Bluetooth,
+//            descriptionResId = R.string.bluetooth_connect_message
+//        ),
         NavigationItem(
             titleResId = R.string.nav_bluetooth_connection,
             icon = Icons.Default.Bluetooth, // use available icon to avoid missing ref

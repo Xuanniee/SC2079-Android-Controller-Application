@@ -324,12 +324,14 @@ fun MappingHomeScreen(
             } else {
                 // --- Portrait fallback: stack map then panel
                 Column(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                    ,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Card(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(0.7f)
                             .fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -416,7 +418,9 @@ fun MappingHomeScreen(
                     }
 
                     RightPanel(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .weight(0.3f)
+                            .fillMaxWidth(),
                         editMode = uiState.editMode,
                         savedMaps = uiState.savedMaps,
                         selectedLoadName = selectedLoadName,

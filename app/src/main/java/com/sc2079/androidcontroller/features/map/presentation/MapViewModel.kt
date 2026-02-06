@@ -133,6 +133,36 @@ class MapViewModel(
         publish()
     }
 
+//    fun applyRobotEvent(event: RobotInboundEvent) {
+//        var mapSnapshot = mapSnapshot
+//
+//        when (event) {
+//            // Update Robot Position
+//            is RobotInboundEvent.RobotPositionEvent -> {
+//                mapSnapshot = setRobotPosition(mapSnapshot, event.x, event.y, event.faceDir)
+//                _uiState.update { it.copy(robotStatus = "ROBOT,${event.x},${event.y},${event.faceDir}") }
+//            }
+//
+//            // Update Target ID of Obstacle
+//            is RobotInboundEvent.TargetEvent -> {
+//                val directIdExists = mapSnapshot.obstacles.any { it.obstacleId == event.obstacleId }
+//                val minusOneExists = mapSnapshot.obstacles.any { it.obstacleId == event.obstacleId - 1 }
+//
+//                val actualObstacleId = when {
+//                    directIdExists -> event.obstacleId
+//                    minusOneExists -> event.obstacleId - 1
+//                    else -> event.obstacleId
+//                }
+//
+//                mapSnapshot = updateObstacleTargetId(mapSnapshot, actualObstacleId, event.targetId)
+//                _uiState.update { it.copy(robotStatus = "TARGET,${event.obstacleId},${event.targetId}") }
+//            }
+//        }
+//
+//        mapSnapshot = mapSnapshot
+//        publish()
+//    }
+
 //    fun applyRobotMessage(raw: String) {
 //        val events = RobotMessageParser.parse(raw)
 //        if (events.isEmpty()) return

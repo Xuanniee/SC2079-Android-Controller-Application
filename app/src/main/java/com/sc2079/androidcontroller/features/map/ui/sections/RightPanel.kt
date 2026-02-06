@@ -2,14 +2,15 @@ package com.sc2079.androidcontroller.features.map.ui.sections
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.sc2079.androidcontroller.features.map.domain.model.MapEditMode
 import com.sc2079.androidcontroller.features.map.ui.components.DPad
@@ -40,12 +41,15 @@ fun RightPanel(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Map Mode card (top)
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
@@ -97,8 +101,7 @@ fun RightPanel(
 
                 // Actions row 1: Reset + Save
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     FilledTonalButton(
@@ -126,8 +129,7 @@ fun RightPanel(
 
                 // Actions row 2: Load button + Sync Robot Messages
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -199,8 +201,7 @@ fun RightPanel(
         // Controls card (bottom)
         Card(
             modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = false),
+                .fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)

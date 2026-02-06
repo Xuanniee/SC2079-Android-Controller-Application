@@ -96,7 +96,7 @@ fun BluetoothSetupScreen(
                 Text("Error: $it", color = MaterialTheme.colorScheme.error)
             }
 
-            Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(12.dp))
 
             // Buttons layout: 2 columns on mobile, single row on tablet
             if (isMobile) {
