@@ -80,12 +80,18 @@ fun BluetoothConnectionScreen(
         val minDimension = minOf(maxWidth, maxHeight)
         val isMobile = minDimension < 600.dp
 
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .fillMaxSize()
+                .padding(16.dp),
+            contentAlignment = Alignment.Center
         ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = 600.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
             // Page Name
             Text("Bluetooth Connection", style = MaterialTheme.typography.titleLarge)
 
@@ -308,6 +314,7 @@ fun BluetoothConnectionScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Open Chat")
+            }
             }
         }
     }
