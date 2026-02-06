@@ -55,10 +55,14 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize locale state and bluetooth viewModel
         LocaleState.initFromCurrentLocale()
-        val bluetoothManager = BluetoothClassicManager(
-            controllerAppContext = applicationContext,
-            bluetoothScope = lifecycleScope
-        )
+
+        // Ensure the bluetoothManager is singleton and will not be destroyed when activity dies
+        val bluetoothManager = (application as ControllerApp).bluetoothManager
+
+//        val bluetoothManager = BluetoothClassicManager(
+//            controllerAppContext = applicationContext,
+//            bluetoothScope = lifecycleScope
+//        )
 
         enableEdgeToEdge()
         setContent {
@@ -88,6 +92,11 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        android.util.Log.w("BT_LIFECYCLE", "BT_TEST: MainActivity onDestroy isFinishing=\$isFinishing activityHash=\${System.identityHashCode(this)}")
     }
 }
 
@@ -144,7 +153,7 @@ import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothVie
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewmodelFactory
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothChatScreen
 import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothSetupScreen
-import com.sc2079.androidcontroller.features.map.ui.MappingHomeScreen
+import com.sc2079.androidcontroller.features.map.ui.screens.MappingHomeScreen
 
 /**
  * Entry Point for the Android Controller.
