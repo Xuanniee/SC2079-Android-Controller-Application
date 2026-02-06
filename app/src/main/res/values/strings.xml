@@ -80,4 +80,5 @@
     <string name="reset_map_title">Reset Map</string>
     <string name="reset_map_message">Are you sure you want to reset the map? This action cannot be undone.</string>
     <string name="use_map">Use Map</string>
+    <string name="better_map_ui">Better Map UI</string>
 </resources>

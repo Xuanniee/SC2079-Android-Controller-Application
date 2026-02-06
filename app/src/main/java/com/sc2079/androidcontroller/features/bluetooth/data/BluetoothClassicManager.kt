@@ -80,8 +80,18 @@ class BluetoothClassicManager(
     private var readerJob: Job? = null
     // Coroutine job as server to wait for robot to connect
     private var acceptBluetoothJob: Job? = null
-    // Flag to track if disconnect is user-initiated
-    private var isUserInitiatedDisconnect = false
+//    // Flag to track if disconnect is user-initiated
+//    private var isUserInitiatedDisconnect = false
+    /**
+     * Variables for reconnecting to the Client
+     */
+    // Whether we should automatically go back to listening after an unexpected disconnect
+    private var autoRestartServerOnDrop: Boolean = true
+    // Remember the last server name used, so we can relaunch listening
+    private var lastServiceName: String = "SC2079_BT"
+    // Track if we are currently acting as server (so we only auto-relisten for server mode)
+    private var isServerMode: Boolean = false
+
 
     /**
      * Permissions
@@ -203,8 +213,12 @@ class BluetoothClassicManager(
      */
     fun startBluetoothServer(serviceName: String = "SC2079_BT") {
         // Ensure only 1 BT Server, kill off any old connections
-        disconnectBluetooth(userInitiated = true) // User-initiated when starting server
-        stopBluetoothServer()
+        disconnectBluetooth(userInitiated = true)
+
+        // In the event the robot disconnects, they can try to reconnect back
+        // Remember the name of the service last connected to us as server
+        lastServiceName = serviceName
+        isServerMode = true
 
         // Ensure BT Hardware exists, enabled and has permissions
         val btAdapter = bluetoothAdapter ?: run {
@@ -280,9 +294,11 @@ class BluetoothClassicManager(
      */
     // Attempt to connect to a server via BT
     fun connectBluetooth(device: BluetoothDevice) {
+        // Ensure we are not hosting as server
+        isServerMode = false
+
         // Reset to Clean state
-        disconnectBluetooth(userInitiated = true) // User-initiated when connecting to new device
-        stopBluetoothServer()
+        disconnectBluetooth(userInitiated = true)
 
         // Ensure BT Hardware exists, enabled and has permissions
         val btAdapter = bluetoothAdapter
@@ -342,9 +358,16 @@ class BluetoothClassicManager(
                 )
             }"
         )
+        // Disable the application from acting as the server if the user chose to manually disconnect
+//        isUserInitiatedDisconnect = userInitiated
+        if (userInitiated) {
+            // Will not continue listening
+            isServerMode = false
+        }
+
+
         // Store whether this is user-initiated before disconnecting
         val wasConnected = _bluetoothConnState.value is BluetoothConnState.Connected
-        isUserInitiatedDisconnect = userInitiated
 
         // Stop listening for any server if we are
         stopBluetoothServer()
@@ -371,8 +394,18 @@ class BluetoothClassicManager(
         bluetoothSocket = null
 
         // Update the UiState to be disconnceted
-        val previousState = _bluetoothConnState.value
+//        val previousState = _bluetoothConnState.value
         _bluetoothConnState.value = BluetoothConnState.Disconnected
+
+        // Need to auto listen if we are hosting the BT server and disconnect isnt user initiated
+        // i.e. accidentally lost connection
+        // AUTO-RELISTEN if we were hosting and it wasn't user initiated
+        if (wasConnected && !userInitiated && isServerMode && autoRestartServerOnDrop) {
+            bluetoothScope.launch {
+                delay(500) // small backoff so sockets fully tear down
+                startBluetoothServer(lastServiceName)
+            }
+        }
 
         // Trigger vibration if this was an unexpected disconnection (was connected but not user-initiated)
         if (wasConnected && !userInitiated) {

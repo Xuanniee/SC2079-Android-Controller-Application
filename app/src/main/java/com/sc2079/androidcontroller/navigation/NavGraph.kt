@@ -27,7 +27,7 @@ fun NavGraph(
     bluetoothViewModel: BluetoothViewModel,
     mapViewModel: MapViewModel,
     modifier: Modifier = Modifier,
-    startDestination: String = Screen.Home.route
+    startDestination: String = Screen.BluetoothConnection   .route
 ) {
     NavHost(
         navController = navController,
