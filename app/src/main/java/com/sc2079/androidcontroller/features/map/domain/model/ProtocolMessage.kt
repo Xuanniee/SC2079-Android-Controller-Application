@@ -26,6 +26,7 @@ sealed class ProtocolMessage {
     ) : ProtocolMessage()
 
     data class ObstacleList(
+        val retryEnabled: Boolean,
         val obstacles: List<ObstacleItem>
     ) : ProtocolMessage() {
         data class ObstacleItem(

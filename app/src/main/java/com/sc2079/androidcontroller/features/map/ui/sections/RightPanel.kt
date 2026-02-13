@@ -22,6 +22,9 @@ import com.sc2079.androidcontroller.features.map.ui.util.editModeLabel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RightPanel(
+    // For signaling an aggressive algo for retry
+    retryEnabled: Boolean,
+    onRetryChange: (Boolean) -> Unit,
     editMode: MapEditMode,
     savedMaps: List<String>,
     selectedLoadName: String,
@@ -95,11 +98,26 @@ fun RightPanel(
                         selected = editMode == MapEditMode.ChangeObstacleFace,
                         onClick = { onSetMode(MapEditMode.ChangeObstacleFace) }
                     )
+
+                    // Retry Toggle, False by Default
+                    // For switching to a less aggressive algo if we failed on first try
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Switch(
+                            checked = retryEnabled,
+                            onCheckedChange = onRetryChange
+                        )
+                        Text(
+                            text = "Retry (Less Aggro)",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(14.dp))
 
-                // Actions row 1: Reset + Save
+                // Actions row 1: Reset + Sync Robot Messages
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -114,20 +132,23 @@ fun RightPanel(
                         Text("Reset Map")
                     }
 
+                    // Robot Sync Button
                     FilledTonalButton(
-                        onClick = onSave,
+                        // Sync with Robot
+                        onClick = onSync,
+                        enabled = true,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
+                        Icon(Icons.Default.Sync, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
-                        Text("Save Map")
+                        Text("Sync")
                     }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
-                // Actions row 2: Load button + Sync Robot Messages
+                // Actions row 2: Load button + Save
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -168,6 +189,16 @@ fun RightPanel(
 //                            }
 //                        }
 //                    }
+                    // Save Button
+                    FilledTonalButton(
+                        onClick = onSave,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Save Map")
+                    }
 
                     // Load Maps
                     FilledTonalButton(
@@ -181,18 +212,7 @@ fun RightPanel(
                         Text("Load")
                     }
 
-                    // Robot Sync Button
-                    FilledTonalButton(
-                        // Sync with Robot
-                        onClick = onSync,
-                        enabled = true,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Icon(Icons.Default.Sync, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Sync")
-                    }
+
 
                 }
             }

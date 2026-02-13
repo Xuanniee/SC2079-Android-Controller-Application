@@ -11,6 +11,7 @@ import com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
 import com.sc2079.androidcontroller.features.map.domain.usecase.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -33,6 +34,9 @@ class MapViewModel(
 ) : ViewModel() {
     // SSOT for Map's data model e.g. list of obstacles
     private var mapSnapshot: MapSnapshot = resetMap()
+    // Tracks whether we should use the Retry Algo
+    private val _retryEnabled = MutableStateFlow(false)
+    val retryEnabled: StateFlow<Boolean> = _retryEnabled.asStateFlow()
     // StateFlow for UI to observe to rerender
     private val _uiState = MutableStateFlow(MapUiState())
     val uiState: StateFlow<MapUiState> = _uiState
@@ -43,8 +47,12 @@ class MapViewModel(
     }
 
     /**
-     *
+     * Toggle the Retry Algo
      */
+    fun setRetryEnabled(enabled: Boolean) {
+        _retryEnabled.value = enabled
+    }
+
     fun setEditMode(mode: MapEditMode) {
         _uiState.update { it.copy(editMode = mode) }
     }

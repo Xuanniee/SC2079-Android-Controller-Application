@@ -36,6 +36,9 @@ fun MappingHomeScreen(
 ) {
     val uiState by mapViewModel.uiState.collectAsState()
 
+    // Collect the Retry value
+    val retryEnabled by mapViewModel.retryEnabled.collectAsState()
+
     // Process only new robot messages (so recomposition doesn't re-apply)
     val btUi by bluetoothViewModel.bluetoothUiState.collectAsState()
     var lastProcessedIdx by remember { mutableIntStateOf(0) }
@@ -84,7 +87,7 @@ fun MappingHomeScreen(
         if (pendingSyncAfterLoad) {
             // TODO I think better to not send clear to robot first ig
             // bluetoothViewModel.sendMessage(RobotProtocol.clear())
-            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(uiState.obstacles))
+            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(uiState.obstacles, retryEnabled))
             pendingSyncAfterLoad = false
         }
     }
@@ -186,7 +189,8 @@ fun MappingHomeScreen(
                                     // TODO Need decide if we want to send an empty list when we reset the obstacle
                                     bluetoothViewModel.sendMessage(
                                         RobotProtocol.sendObstacleList(
-                                            emptyList()
+                                            emptyList(),
+                                            retryEnabled
                                         )
                                     )
                                 },
@@ -280,6 +284,10 @@ fun MappingHomeScreen(
                             .widthIn(min = 320.dp, max = 420.dp)
                             .weight(0.3f)
                             .fillMaxHeight(),
+                        retryEnabled = retryEnabled,
+                        onRetryChange = {
+                            mapViewModel.setRetryEnabled(it)
+                        },
                         editMode = uiState.editMode,
                         savedMaps = uiState.savedMaps,
                         selectedLoadName = selectedLoadName,
@@ -292,7 +300,7 @@ fun MappingHomeScreen(
                             mapViewModel.resetAll()
                             bluetoothViewModel.sendMessage(RobotProtocol.clear())
                             // TODO Need decide if we want to send an empty list when we reset the obstacle
-                            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList()))
+                            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList(), retryEnabled))
                         },
                         onSave = { showSaveDialog = true },
                         onLoad = {
@@ -313,7 +321,7 @@ fun MappingHomeScreen(
 //                                RobotProtocol.clear()
 //                            )
                             bluetoothViewModel.sendMessage(
-                                RobotProtocol.sendObstacleList(uiState.obstacles)
+                                RobotProtocol.sendObstacleList(uiState.obstacles, retryEnabled)
                             )
                         },
                         // To Open Message Log
@@ -346,7 +354,8 @@ fun MappingHomeScreen(
                                 // TODO Need decide if we want to send an empty list when we reset the obstacle
                                 bluetoothViewModel.sendMessage(
                                     RobotProtocol.sendObstacleList(
-                                        emptyList()
+                                        emptyList(),
+                                        retryEnabled
                                     )
                                 )
                             },
@@ -421,6 +430,10 @@ fun MappingHomeScreen(
                         modifier = Modifier
                             .weight(0.3f)
                             .fillMaxWidth(),
+                        retryEnabled = retryEnabled,
+                        onRetryChange = {
+                            mapViewModel.setRetryEnabled(it)
+                        },
                         editMode = uiState.editMode,
                         savedMaps = uiState.savedMaps,
                         selectedLoadName = selectedLoadName,
@@ -432,7 +445,9 @@ fun MappingHomeScreen(
                             mapViewModel.resetAll()
                             bluetoothViewModel.sendMessage(RobotProtocol.clear())
                             // TODO Need decide if we want to send an empty list when we reset the obstacle
-                            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList()))
+                            bluetoothViewModel.sendMessage(
+                                RobotProtocol.sendObstacleList(emptyList(), retryEnabled)
+                            )
                         },
                         onSave = { showSaveDialog = true },
                         onLoad = {
@@ -452,7 +467,7 @@ fun MappingHomeScreen(
 //                                RobotProtocol.clear()
 //                            )
                             bluetoothViewModel.sendMessage(
-                                RobotProtocol.sendObstacleList(uiState.obstacles)
+                                RobotProtocol.sendObstacleList(uiState.obstacles, retryEnabled)
                             )
                         },
                         // To open messages

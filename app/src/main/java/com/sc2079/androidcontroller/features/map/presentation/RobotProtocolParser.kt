@@ -227,31 +227,94 @@ object RobotProtocolParser {
         return ProtocolMessage.ObstacleOrientation(id, x, y, oldFace, newFace)
     }
 
+    /**
+     * Function to parse string to be formatted into a protocol message to be sent to the RPI
+     */
     private fun parseObstacleList(payload: String): ProtocolMessage? {
         val trimmed = payload.trim()
-        if (trimmed == "0") return ProtocolMessage.ObstacleList(emptyList())
 
-        val firstComma = trimmed.indexOf(',')
-        if (firstComma == -1) return null
+        // Split only first 2 commas: retry, count, rest
+        val parts = trimmed.split(",", limit = 3).map { it.trim() }
+        if (parts.size < 2) return null
 
-        val n = parseIntSafe(trimmed.take(firstComma)) ?: return null
-        val rest = trimmed.substring(firstComma + 1).trim()
-        if (n == 0) return ProtocolMessage.ObstacleList(emptyList())
+        // Parse retry boolean
+        val retry = parts[0].toBooleanStrictOrNull() ?: return null
 
-        val itemsRaw = rest.split("|").map { it.trim() }.filter { it.isNotEmpty() }
+        // Parse obstacle count
+        val n = parseIntSafe(parts[1]) ?: return null
+
+        // No obstacles
+        if (n == 0) {
+            return ProtocolMessage.ObstacleList(
+                retryEnabled = retry,
+                obstacles = emptyList()
+            )
+        }
+
+        if (parts.size < 3) return null
+        val rest = parts[2]
+
+        // Parse obstacle payload
+        val itemsRaw = rest.split("|")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
         val items = itemsRaw.mapNotNull { itemStr ->
-            val fields = itemStr.split(";").map { it.trim() }.filter { it.isNotEmpty() }
+            val fields = itemStr.split(";").map { it.trim() }
             if (fields.size < 4) return@mapNotNull null
+
             val id = parseIntSafe(fields[0]) ?: return@mapNotNull null
             val x = parseIntSafe(fields[1]) ?: return@mapNotNull null
             val y = parseIntSafe(fields[2]) ?: return@mapNotNull null
             val face = parseFaceSafe(fields[3]) ?: return@mapNotNull null
+
             ProtocolMessage.ObstacleList.ObstacleItem(id, x, y, face)
         }
 
         if (items.size != n) return null
-        return ProtocolMessage.ObstacleList(items)
+
+        return ProtocolMessage.ObstacleList(
+            retryEnabled = retry,
+            obstacles = items
+        )
     }
+
+    // OLD
+//    private fun parseObstacleList(payload: String): ProtocolMessage? {
+//        // If no obstalces, send empty list
+//        val trimmed = payload.trim()
+//        if (trimmed == "0") {
+//            return ProtocolMessage.ObstacleList(emptyList())
+//        }
+//
+//        val firstComma = trimmed.indexOf(',')
+//        if (firstComma == -1) {
+//            return null
+//        }
+//
+//        val n = parseIntSafe(trimmed.take(firstComma)) ?: return null
+//        val rest = trimmed.substring(firstComma + 1).trim()
+//        if (n == 0) {
+//            return ProtocolMessage.ObstacleList(emptyList())
+//        }
+//
+//        // Parsing the obstacles based on delimiter |
+//        val itemsRaw = rest.split("|").map { it.trim() }.filter { it.isNotEmpty() }
+//        val items = itemsRaw.mapNotNull { itemStr ->
+//            val fields = itemStr.split(";").map { it.trim() }.filter { it.isNotEmpty() }
+//            if (fields.size < 4) return@mapNotNull null
+//            val id = parseIntSafe(fields[0]) ?: return@mapNotNull null
+//            val x = parseIntSafe(fields[1]) ?: return@mapNotNull null
+//            val y = parseIntSafe(fields[2]) ?: return@mapNotNull null
+//            val face = parseFaceSafe(fields[3]) ?: return@mapNotNull null
+//            ProtocolMessage.ObstacleList.ObstacleItem(id, x, y, face)
+//        }
+//
+//        if (items.size != n) {
+//            return null
+//        }
+//        return ProtocolMessage.ObstacleList(items)
+//    }
 
     private fun parseRobotPlacement(payload: String): ProtocolMessage? {
         val parts = splitCsv(payload)

@@ -26,13 +26,18 @@ object RobotProtocol {
     fun changeObstacleOrientation(obstacle: Obstacle, oldFaceDir: FaceDir, newFaceDir: FaceDir): String =
         "STATUS, OBSTACLE ORIENTATION, ${obstacle.obstacleId}, ${obstacle.x * mapUnit}, ${obstacle.y * mapUnit}, ${oldFaceDir.name}, ${newFaceDir.name}"
 
-    fun sendObstacleList(obstacles: List<Obstacle>): String {
-        if (obstacles.isEmpty()) return "STATUS, OBSTACLE LIST, 0"
+    /**
+     * Sync with the AI where all the obstacles are
+     * STATUS, OBSTACLE LIST, RETRY Boolean (whether we are using a less aggro algo, number of obstacles,
+     * payload of obstacles)
+     */
+    fun sendObstacleList(obstacles: List<Obstacle>, retryEnabled: Boolean): String {
+        if (obstacles.isEmpty()) return "STATUS, OBSTACLE LIST, $retryEnabled, 0"
 
         val payload = obstacles.joinToString(" | ") { o ->
             "${o.obstacleId}; ${o.x * mapUnit}; ${o.y * mapUnit}; ${o.faceDir.name}"
         }
-        return "STATUS, OBSTACLE LIST, ${obstacles.size}, $payload"
+        return "STATUS, OBSTACLE LIST, $retryEnabled, ${obstacles.size}, $payload"
     }
 
     /**
