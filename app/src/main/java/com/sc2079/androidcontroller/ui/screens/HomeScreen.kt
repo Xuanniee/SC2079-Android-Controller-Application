@@ -115,7 +115,9 @@ import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
 import com.sc2079.androidcontroller.features.controller.domain.ControlState
 import com.sc2079.androidcontroller.features.controller.domain.model.ActivityStatus
 import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
+import com.sc2079.androidcontroller.features.controller.domain.model.StatusProtocol
 import com.sc2079.androidcontroller.features.controller.domain.usecase.MoveRobotUseCase
+import com.sc2079.androidcontroller.features.controller.domain.usecase.RobotControlBluetoothModule
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
 import kotlinx.coroutines.delay
@@ -146,8 +148,11 @@ fun HomeScreen(
     // Get Bluetooth state
     val bluetoothUiState by bluetoothViewModel.bluetoothUiState.collectAsState()
     
-    // Initialize RobotStatus state and MoveRobotUseCase
+    // Initialize RobotStatus state, MoveRobotUseCase, and RobotControlBluetoothModule
     val moveRobotUseCase = remember { MoveRobotUseCase() }
+    val robotControlModule = remember { 
+        RobotControlBluetoothModule(moveRobotUseCase, bluetoothViewModel) 
+    }
     var robotStatus by remember { 
         mutableStateOf<RobotStatus?>(
             // Initialize from map's robot position if available
@@ -167,73 +172,112 @@ fun HomeScreen(
     LaunchedEffect(Unit) {
         bluetoothViewModel.incomingBtBytes.collect { bytes ->
             val message = String(bytes, Charset.defaultCharset())
-            val messageUpper = message.uppercase().trim()
             
-            // Check for "ROBOT,scanning" pattern first (case insensitive)
-            // This is a special message indicating the robot is scanning
-            // Matches: "ROBOT,scanning", "ROBOT, scanning", "robot,scanning", etc.
-            if (messageUpper.matches(Regex("ROBOT\\s*,\\s*SCANNING"))) {
-                // Set scanning status
-                isRobotScanning = true
-                // Reset scanning status after 2 seconds
-                robotScope.launch {
-                    delay(2000)
-                    isRobotScanning = false
+            // Parse status messages using StatusProtocol
+            val statusFromMessage = StatusProtocol.parseStatusMessage(message)
+            
+            when (statusFromMessage) {
+                ActivityStatus.SCANNING -> {
+                    // Set scanning status
+                    isRobotScanning = true
+                    // Reset scanning status after 2 seconds
+                    robotScope.launch {
+                        delay(2000)
+                        isRobotScanning = false
+                    }
+                    return@collect // Don't process further if it's a scanning message
                 }
-                return@collect // Don't process further if it's a scanning message
-            }
-            
-            // Check for "ROBOT,stopped" pattern (case insensitive)
-            // This is a special message indicating the robot has stopped
-            // Matches: "ROBOT,stopped", "ROBOT, stopped", "robot,stopped", etc.
-            if (messageUpper.matches(Regex("ROBOT\\s*,\\s*STOPPED"))) {
-                // Update robotStatus to indicate stopped
-                robotStatus = robotStatus?.copy(
-                    isMoving = false,
-                    statusMessage = "Stopped"
-                ) ?: RobotStatus(
-                    x = 0,
-                    y = 0,
-                    faceDir = FaceDir.NORTH,
-                    statusMessage = "Stopped",
-                    isMoving = false
-                )
-                return@collect // Don't process further if it's a stopped message
-            }
+                ActivityStatus.CONNECTED -> {
+                    // Robot has confirmed connection
+                    // Update robotStatus to indicate connected (but not moving)
+                    robotStatus = robotStatus?.copy(
+                        isMoving = false,
+                        statusMessage = "Connected"
+                    ) ?: RobotStatus(
+                        x = 0,
+                        y = 0,
+                        faceDir = FaceDir.NORTH,
+                        statusMessage = "Connected",
+                        isMoving = false
+                    )
+                    return@collect // Don't process further if it's a connected message
+                }
+                ActivityStatus.STOPPED -> {
+                    // Update robotStatus to indicate stopped
+                    robotStatus = robotStatus?.copy(
+                        isMoving = false,
+                        statusMessage = "Stopped"
+                    ) ?: RobotStatus(
+                        x = 0,
+                        y = 0,
+                        faceDir = FaceDir.NORTH,
+                        statusMessage = "Stopped",
+                        isMoving = false
+                    )
+                    return@collect // Don't process further if it's a stopped message
+                }
+                ActivityStatus.MOVING -> {
+                    // Parse position data from the message
+                    val events = RobotProtocolParser.parseRobotBatch(message)
+                    events.forEach { event ->
+                        when (event) {
+                            is RobotInboundEvent.RobotPositionEvent -> {
+                                // Update robotStatus with new position from ROBOT message
+                                // This indicates the robot is moving (only when ROBOT message is received)
+                                robotStatus = RobotStatus(
+                                    x = event.x,
+                                    y = event.y,
+                                    faceDir = event.faceDir,
+                                    statusMessage = "Moving",
+                                    isMoving = true
+                                )
 
-            /**
-             * New Parser
-             */
-            // Parse messages to check for valid ROBOT position messages ("ROBOT, x, y, direction")
-            val events = RobotProtocolParser.parseRobotBatch(message)
+                                mapViewModel.applyRobotEvent(event)
 
-            // Process ROBOT messages to update robot position and set moving status
-            events.forEach { event ->
-                when (event) {
-                    is RobotInboundEvent.RobotPositionEvent -> {
-                        // Update robotStatus with new position from ROBOT message
-                        // This indicates the robot is moving (only when ROBOT message is received)
-                        robotStatus = RobotStatus(
-                            x = event.x,
-                            y = event.y,
-                            faceDir = event.faceDir,
-                            statusMessage = "Moving",
-                            isMoving = true
-                        )
-
-                        mapViewModel.applyRobotEvent(event)
-
-                        // Reset isMoving to false after 2 seconds (robot stopped moving)
-                        robotScope.launch {
-                            delay(2000)
-                            robotStatus = robotStatus?.copy(
-                                isMoving = false,
-                                statusMessage = "Stopped"
-                            )
+                                // Reset isMoving to false after 2 seconds (robot stopped moving)
+                                robotScope.launch {
+                                    delay(2000)
+                                    robotStatus = robotStatus?.copy(
+                                        isMoving = false,
+                                        statusMessage = "Stopped"
+                                    )
+                                }
+                            }
+                            is RobotInboundEvent.TargetEvent -> {
+                                mapViewModel.applyRobotEvent(event)
+                            }
                         }
                     }
-                    is RobotInboundEvent.TargetEvent -> {
-                        mapViewModel.applyRobotEvent(event)
+                    return@collect // Don't process further if it's a moving message
+                }
+                else -> {
+                    // Not a recognized status message, try parsing as other robot events
+                    val events = RobotProtocolParser.parseRobotBatch(message)
+                    events.forEach { event ->
+                        when (event) {
+                            is RobotInboundEvent.RobotPositionEvent -> {
+                                // This shouldn't happen if StatusProtocol is working correctly,
+                                // but handle it as a fallback
+                                robotStatus = RobotStatus(
+                                    x = event.x,
+                                    y = event.y,
+                                    faceDir = event.faceDir,
+                                    statusMessage = "Moving",
+                                    isMoving = true
+                                )
+                                mapViewModel.applyRobotEvent(event)
+                                robotScope.launch {
+                                    delay(2000)
+                                    robotStatus = robotStatus?.copy(
+                                        isMoving = false,
+                                        statusMessage = "Stopped"
+                                    )
+                                }
+                            }
+                            is RobotInboundEvent.TargetEvent -> {
+                                mapViewModel.applyRobotEvent(event)
+                            }
+                        }
                     }
                 }
             }
@@ -265,24 +309,40 @@ fun HomeScreen(
     }
     
     // Handler functions for control buttons
+    // Up arrow: Move forward in the direction robot is facing
     val handleMoveUp = {
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
-        robotStatus = moveRobotUseCase.moveAbsolute(current, "up")
+        robotStatus = robotControlModule.moveForward(robotStatus)
     }
     
+    // Down arrow: Move backward (opposite to facing direction)
     val handleMoveDown = {
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
-        robotStatus = moveRobotUseCase.moveAbsolute(current, "down")
+        robotStatus = robotControlModule.moveBackward(robotStatus)
     }
     
+    // Left arrow: Rotate robot 90 degrees left (counter-clockwise)
     val handleMoveLeft = {
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
-        robotStatus = moveRobotUseCase.moveAbsolute(current, "left")
+        val newStatus = robotControlModule.rotateLeft(robotStatus)
+        robotStatus = newStatus
+        // Update map's robot position with new faceDir after rotation
+        val robotEvent = RobotInboundEvent.RobotPositionEvent(
+            x = newStatus.x,
+            y = newStatus.y,
+            faceDir = newStatus.faceDir
+        )
+        mapViewModel.applyRobotEvent(robotEvent)
     }
     
+    // Right arrow: Rotate robot 90 degrees right (clockwise)
     val handleMoveRight = {
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
-        robotStatus = moveRobotUseCase.moveAbsolute(current, "right")
+        val newStatus = robotControlModule.rotateRight(robotStatus)
+        robotStatus = newStatus
+        // Update map's robot position with new faceDir after rotation
+        val robotEvent = RobotInboundEvent.RobotPositionEvent(
+            x = newStatus.x,
+            y = newStatus.y,
+            faceDir = newStatus.faceDir
+        )
+        mapViewModel.applyRobotEvent(robotEvent)
     }
     
     // Compute ActivityStatus based on Bluetooth state and robot status
@@ -297,6 +357,7 @@ fun HomeScreen(
             bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected -> {
                 when {
                     robotStatus?.isMoving == true -> ActivityStatus.MOVING
+                    robotStatus?.statusMessage == "Connected" -> ActivityStatus.CONNECTED
                     robotStatus != null -> ActivityStatus.STOPPED
                     else -> ActivityStatus.CONNECTED
                 }
@@ -438,7 +499,19 @@ fun HomeScreen(
 //                                // TODO REmove for now Track latest selected position for mode change detection
 //                                latestSelectedPosition = position
 
-                                mapViewModel.onTapCell(x, y)
+                                val addedObstacle = mapViewModel.onTapCell(x, y)
+                                
+                                // Send obstacle placement command if obstacle was added and in PlaceObstacle mode
+                                if (mapUiState.editMode == MapEditMode.PlaceObstacle && addedObstacle != null) {
+                                    // Only send if Bluetooth is connected
+                                    if (bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected) {
+                                        val message = RobotProtocol.upsertObstacle(addedObstacle)
+                                        // Only send if message is not empty (bounds check passed)
+                                        if (message.isNotEmpty()) {
+                                            bluetoothViewModel.sendMessage(message)
+                                        }
+                                    }
+                                }
 
 //                                // Trigger chip splash effect
 //                                chipSplashTrigger++
@@ -453,6 +526,18 @@ fun HomeScreen(
                                 val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
                                 obstacle?.let {
                                     mapViewModel.removeObstacleByNo(it.obstacleId)
+                                    
+                                    // Send obstacle deletion command if in PlaceObstacle mode
+                                    if (mapUiState.editMode == MapEditMode.PlaceObstacle) {
+                                        // Only send if Bluetooth is connected
+                                        if (bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected) {
+                                            val message = RobotProtocol.removeObstacle(obstacle)
+                                            // Only send if message is not empty
+                                            if (message.isNotEmpty()) {
+                                                bluetoothViewModel.sendMessage(message)
+                                            }
+                                        }
+                                    }
                                 }
 
                                 // Remove robot if at this position
@@ -668,7 +753,19 @@ fun HomeScreen(
 //                                // Track latest selected position for mode change detection
 //                                latestSelectedPosition = position
 
-                                mapViewModel.onTapCell(x, y)
+                                val addedObstacle = mapViewModel.onTapCell(x, y)
+                                
+                                // Send obstacle placement command if obstacle was added and in PlaceObstacle mode
+                                if (mapUiState.editMode == MapEditMode.PlaceObstacle && addedObstacle != null) {
+                                    // Only send if Bluetooth is connected
+                                    if (bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected) {
+                                        val message = RobotProtocol.upsertObstacle(addedObstacle)
+                                        // Only send if message is not empty (bounds check passed)
+                                        if (message.isNotEmpty()) {
+                                            bluetoothViewModel.sendMessage(message)
+                                        }
+                                    }
+                                }
 
 //                                // Trigger chip splash effect
 //                                chipSplashTrigger++
@@ -683,6 +780,18 @@ fun HomeScreen(
                                 val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
                                 obstacle?.let {
                                     mapViewModel.removeObstacleByNo(it.obstacleId)
+                                    
+                                    // Send obstacle deletion command if in PlaceObstacle mode
+                                    if (mapUiState.editMode == MapEditMode.PlaceObstacle) {
+                                        // Only send if Bluetooth is connected
+                                        if (bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected) {
+                                            val message = RobotProtocol.removeObstacle(obstacle)
+                                            // Only send if message is not empty
+                                            if (message.isNotEmpty()) {
+                                                bluetoothViewModel.sendMessage(message)
+                                            }
+                                        }
+                                    }
                                 }
 
                                 // Remove robot if at this position
@@ -718,7 +827,19 @@ fun HomeScreen(
 //                            // Track latest selected position for mode change detection
 //                            latestSelectedPosition = position
 
-                            mapViewModel.onTapCell(x, y)
+                            val addedObstacle = mapViewModel.onTapCell(x, y)
+                            
+                            // Send obstacle placement command if obstacle was added and in PlaceObstacle mode
+                            if (mapUiState.editMode == MapEditMode.PlaceObstacle && addedObstacle != null) {
+                                // Only send if Bluetooth is connected
+                                if (bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected) {
+                                    val message = RobotProtocol.upsertObstacle(addedObstacle)
+                                    // Only send if message is not empty (bounds check passed)
+                                    if (message.isNotEmpty()) {
+                                        bluetoothViewModel.sendMessage(message)
+                                    }
+                                }
+                            }
 
 //                            // Trigger chip splash effect
 //                            chipSplashTrigger++
@@ -733,6 +854,18 @@ fun HomeScreen(
                             val obstacle = mapUiState.obstacles.firstOrNull { it.x == x && it.y == y }
                             obstacle?.let {
                                 mapViewModel.removeObstacleByNo(it.obstacleId)
+                                
+                                // Send obstacle deletion command if in PlaceObstacle mode
+                                if (mapUiState.editMode == MapEditMode.PlaceObstacle) {
+                                    // Only send if Bluetooth is connected
+                                    if (bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected) {
+                                        val message = RobotProtocol.removeObstacle(obstacle)
+                                        // Only send if message is not empty
+                                        if (message.isNotEmpty()) {
+                                            bluetoothViewModel.sendMessage(message)
+                                        }
+                                    }
+                                }
                             }
 
                             // Remove robot if at this position

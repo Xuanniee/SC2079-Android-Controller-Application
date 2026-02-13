@@ -27,6 +27,11 @@ import com.sc2079.androidcontroller.features.map.ui.MappingScreen
 import com.sc2079.androidcontroller.features.map.ui.components.DirectionPickerDialog
 import com.sc2079.androidcontroller.features.map.ui.components.MessageLogBottomDialog
 import com.sc2079.androidcontroller.features.map.ui.sections.RightPanel
+import com.sc2079.androidcontroller.features.map.ui.util.Direction
+import com.sc2079.androidcontroller.features.controller.domain.usecase.MoveRobotUseCase
+import com.sc2079.androidcontroller.features.controller.domain.usecase.RobotControlBluetoothModule
+import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
+import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,9 +40,87 @@ fun MappingHomeScreen(
     mapViewModel: MapViewModel
 ) {
     val uiState by mapViewModel.uiState.collectAsState()
+    val btUi by bluetoothViewModel.bluetoothUiState.collectAsState()
+
+    // Initialize robot control module for handling direction button presses
+    val moveRobotUseCase = remember { MoveRobotUseCase() }
+    val robotControlModule = remember {
+        RobotControlBluetoothModule(moveRobotUseCase, bluetoothViewModel)
+    }
+
+    // Track robot status for controller
+    var robotStatus by remember {
+        mutableStateOf<RobotStatus?>(
+            uiState.robotPosition?.let {
+                RobotStatus.fromPosition(it.x, it.y, it.faceDir)
+            }
+        )
+    }
+
+    // Update robotStatus when map's robot position changes
+    LaunchedEffect(uiState.robotPosition) {
+        uiState.robotPosition?.let { robotPos ->
+            robotStatus = RobotStatus.fromPosition(robotPos.x, robotPos.y, robotPos.faceDir)
+        }
+    }
+
+    // Handler for direction button presses (DPad)
+    val handleDirection = { direction: Direction ->
+        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
+        
+        val newStatus = when (direction) {
+            Direction.NORTH -> {
+                // Up button: Move forward in the direction robot is facing
+                robotControlModule.moveForward(current)
+            }
+            Direction.SOUTH -> {
+                // Down button: Move backward (opposite to facing direction)
+                robotControlModule.moveBackward(current)
+            }
+            Direction.WEST -> {
+                // Left button: Rotate robot 90 degrees left (counter-clockwise)
+                robotControlModule.rotateLeft(current)
+            }
+            Direction.EAST -> {
+                // Right button: Rotate robot 90 degrees right (clockwise)
+                robotControlModule.rotateRight(current)
+            }
+        }
+        
+        robotStatus = newStatus
+        
+        // Update map's robot position when status changes
+        val currentPos = uiState.robotPosition
+        if (currentPos != null) {
+            // Check if position or direction changed
+            val positionChanged = newStatus.x != current.x || newStatus.y != current.y
+            val directionChanged = newStatus.faceDir != current.faceDir
+            
+            if (positionChanged) {
+                // Position changed - update map with new position
+                // Temporarily switch to SetStart mode to update robot position
+                val oldMode = uiState.editMode
+                mapViewModel.setEditMode(MapEditMode.SetStart)
+                mapViewModel.onTapCell(newStatus.x, newStatus.y)
+                mapViewModel.setEditMode(oldMode)
+            } else if (directionChanged) {
+                // Only direction changed - update robot position with new direction
+                // Temporarily switch to SetStart mode to update robot direction
+                val oldMode = uiState.editMode
+                mapViewModel.setEditMode(MapEditMode.SetStart)
+                mapViewModel.onTapCell(newStatus.x, newStatus.y)
+                mapViewModel.setEditMode(oldMode)
+            }
+        } else if (newStatus.x != current.x || newStatus.y != current.y) {
+            // No robot position yet, but we're moving - set initial position
+            val oldMode = uiState.editMode
+            mapViewModel.setEditMode(MapEditMode.SetStart)
+            mapViewModel.onTapCell(newStatus.x, newStatus.y)
+            mapViewModel.setEditMode(oldMode)
+        }
+    }
 
     // Process only new robot messages (so recomposition doesn't re-apply)
-    val btUi by bluetoothViewModel.bluetoothUiState.collectAsState()
     var lastProcessedIdx by remember { mutableIntStateOf(0) }
     // BT Message Log
     var showLogSheet by remember { mutableStateOf(false) }
@@ -224,13 +307,13 @@ fun MappingHomeScreen(
 
                                         // Place Obstacle
                                         MapEditMode.PlaceObstacle -> {
-                                            // If no obstacle previously, we can send a message indicating we added it
+                                            // If obstacle was added, send STATUS format message
                                             if (added != null) {
-                                                bluetoothViewModel.sendMessage(
-                                                    RobotProtocol.upsertObstacle(
-                                                        added
-                                                    )
-                                                )
+                                                val message = RobotProtocol.upsertObstacle(added)
+                                                // Only send if message is not empty (bounds check passed)
+                                                if (message.isNotEmpty()) {
+                                                    bluetoothViewModel.sendMessage(message)
+                                                }
                                             }
                                         }
 
@@ -252,21 +335,21 @@ fun MappingHomeScreen(
                                 onDragObstacleToCell = { no, x, y ->
                                     val moved = mapViewModel.onDragObstacle(no, x, y)
                                     if (moved != null) {
-                                        bluetoothViewModel.sendMessage(
-                                            RobotProtocol.upsertObstacle(
-                                                moved
-                                            )
-                                        )
+                                        val message = RobotProtocol.upsertObstacle(moved)
+                                        // Only send if message is not empty (bounds check passed)
+                                        if (message.isNotEmpty()) {
+                                            bluetoothViewModel.sendMessage(message)
+                                        }
                                     }
                                 },
                                 onDragOutsideRemove = { no ->
                                     val removed = mapViewModel.removeObstacleByNo(no)
                                     if (removed != null) {
-                                        bluetoothViewModel.sendMessage(
-                                            RobotProtocol.removeObstacle(
-                                                removed
-                                            )
-                                        )
+                                        val message = RobotProtocol.removeObstacle(removed)
+                                        // Only send if message is not empty
+                                        if (message.isNotEmpty()) {
+                                            bluetoothViewModel.sendMessage(message)
+                                        }
                                     }
                                 },
                                 onEndDrag = { /* no-op */ }
@@ -318,7 +401,7 @@ fun MappingHomeScreen(
                         },
                         // To Open Message Log
                         onOpenLog = { showLogSheet = true },
-                        onDirection = { /* TODO wire manual move if you want */ }
+                        onDirection = handleDirection
                     )
                 }
             } else {
@@ -378,13 +461,13 @@ fun MappingHomeScreen(
 
                                     // Place Obstacle
                                     MapEditMode.PlaceObstacle -> {
-                                        // If no obstacle previously, we can send a message indicating we added it
+                                        // If obstacle was added, send STATUS format message (same as HomeScreen)
                                         if (added != null) {
-                                            bluetoothViewModel.sendMessage(
-                                                RobotProtocol.upsertObstacle(
-                                                    added
-                                                )
-                                            )
+                                            val message = RobotProtocol.upsertObstacle(added)
+                                            // Only send if message is not empty (bounds check passed)
+                                            if (message.isNotEmpty()) {
+                                                bluetoothViewModel.sendMessage(message)
+                                            }
                                         }
                                     }
 
@@ -399,19 +482,25 @@ fun MappingHomeScreen(
                             onStartDragObstacle = { },
                             onDragObstacleToCell = { no, x, y ->
                                 val moved = mapViewModel.onDragObstacle(no, x, y)
-                                if (moved != null) bluetoothViewModel.sendMessage(
-                                    RobotProtocol.upsertObstacle(
-                                        moved
-                                    )
-                                )
+                                // Send obstacle update message (same format as HomeScreen)
+                                if (moved != null) {
+                                    val message = RobotProtocol.upsertObstacle(moved)
+                                    // Only send if message is not empty (bounds check passed)
+                                    if (message.isNotEmpty()) {
+                                        bluetoothViewModel.sendMessage(message)
+                                    }
+                                }
                             },
                             onDragOutsideRemove = { no ->
                                 val removed = mapViewModel.removeObstacleByNo(no)
-                                if (removed != null) bluetoothViewModel.sendMessage(
-                                    RobotProtocol.removeObstacle(
-                                        removed
-                                    )
-                                )
+                                // Send obstacle deletion message (same format as HomeScreen)
+                                if (removed != null) {
+                                    val message = RobotProtocol.removeObstacle(removed)
+                                    // Only send if message is not empty
+                                    if (message.isNotEmpty()) {
+                                        bluetoothViewModel.sendMessage(message)
+                                    }
+                                }
                             },
                             onEndDrag = { }
                         )
@@ -457,7 +546,7 @@ fun MappingHomeScreen(
                         },
                         // To open messages
                         onOpenLog = { showLogSheet = true },
-                        onDirection = { }
+                        onDirection = handleDirection
                     )
                 }
             }
@@ -524,9 +613,11 @@ fun MappingHomeScreen(
                     ?: FaceDir.NORTH
                 val updated = mapViewModel.setObstacleFace(obstacleNo, newFace)
                 if (updated != null) {
-                    bluetoothViewModel.sendMessage(
-                        RobotProtocol.changeObstacleOrientation(updated, oldFace, newFace)
-                    )
+                    val message = RobotProtocol.changeObstacleOrientation(updated, oldFace, newFace)
+                    // Only send if message is not empty (bounds check passed)
+                    if (message.isNotEmpty()) {
+                        bluetoothViewModel.sendMessage(message)
+                    }
                 }
                 facePickerForObstacle = null
             }

@@ -23,6 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.sc2079.androidcontroller.features.controller.domain.model.ActivityStatus
 
@@ -48,14 +51,14 @@ fun StatusCard(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
-                text = title,
+                text = buildAnnotatedString {
+                    append("$title: ")
+                    withStyle(style = SpanStyle(color = getStatusColor(status))) {
+                        append(getStatusText(status))
+                    }
+                },
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = getStatusText(status),
-                style = MaterialTheme.typography.bodySmall,
-                color = getStatusColor(status)
             )
         }
         
