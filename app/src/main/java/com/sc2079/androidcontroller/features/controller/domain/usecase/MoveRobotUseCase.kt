@@ -53,6 +53,106 @@ class MoveRobotUseCase(
     }
 
     /**
+     * Moves the robot forward in the direction it is currently facing
+     * @param currentStatus Current robot status
+     * @return Updated RobotStatus with new position
+     */
+    fun moveForward(currentStatus: RobotStatus): RobotStatus {
+        val (newX, newY) = when (currentStatus.faceDir) {
+            FaceDir.NORTH -> Pair(currentStatus.x, currentStatus.y - 1) // Move up
+            FaceDir.SOUTH -> Pair(currentStatus.x, currentStatus.y + 1) // Move down
+            FaceDir.WEST -> Pair(currentStatus.x - 1, currentStatus.y)  // Move left
+            FaceDir.EAST -> Pair(currentStatus.x + 1, currentStatus.y)  // Move right
+        }
+        
+        // Validate bounds
+        if (!inBounds(newX, newY)) {
+            return currentStatus.copy(
+                statusMessage = "Cannot move: out of bounds",
+                isMoving = false
+            )
+        }
+        
+        return currentStatus.copy(
+            x = newX,
+            y = newY,
+            faceDir = currentStatus.faceDir, // Keep same facing direction
+            statusMessage = "Moved forward",
+            isMoving = false
+        )
+    }
+
+    /**
+     * Moves the robot backward (opposite to the direction it is currently facing)
+     * @param currentStatus Current robot status
+     * @return Updated RobotStatus with new position
+     */
+    fun moveBackward(currentStatus: RobotStatus): RobotStatus {
+        val (newX, newY) = when (currentStatus.faceDir) {
+            FaceDir.NORTH -> Pair(currentStatus.x, currentStatus.y + 1) // Move down (opposite of NORTH)
+            FaceDir.SOUTH -> Pair(currentStatus.x, currentStatus.y - 1) // Move up (opposite of SOUTH)
+            FaceDir.WEST -> Pair(currentStatus.x + 1, currentStatus.y)  // Move right (opposite of WEST)
+            FaceDir.EAST -> Pair(currentStatus.x - 1, currentStatus.y)  // Move left (opposite of EAST)
+        }
+        
+        // Validate bounds
+        if (!inBounds(newX, newY)) {
+            return currentStatus.copy(
+                statusMessage = "Cannot move: out of bounds",
+                isMoving = false
+            )
+        }
+        
+        return currentStatus.copy(
+            x = newX,
+            y = newY,
+            faceDir = currentStatus.faceDir, // Keep same facing direction
+            statusMessage = "Moved backward",
+            isMoving = false
+        )
+    }
+
+    /**
+     * Rotates the robot 90 degrees to the left (counter-clockwise)
+     * @param currentStatus Current robot status
+     * @return Updated RobotStatus with new facing direction
+     */
+    fun rotateLeft(currentStatus: RobotStatus): RobotStatus {
+        val newFaceDir = when (currentStatus.faceDir) {
+            FaceDir.NORTH -> FaceDir.WEST
+            FaceDir.WEST -> FaceDir.SOUTH
+            FaceDir.SOUTH -> FaceDir.EAST
+            FaceDir.EAST -> FaceDir.NORTH
+        }
+        
+        return currentStatus.copy(
+            faceDir = newFaceDir,
+            statusMessage = "Rotated left",
+            isMoving = false
+        )
+    }
+
+    /**
+     * Rotates the robot 90 degrees to the right (clockwise)
+     * @param currentStatus Current robot status
+     * @return Updated RobotStatus with new facing direction
+     */
+    fun rotateRight(currentStatus: RobotStatus): RobotStatus {
+        val newFaceDir = when (currentStatus.faceDir) {
+            FaceDir.NORTH -> FaceDir.EAST
+            FaceDir.EAST -> FaceDir.SOUTH
+            FaceDir.SOUTH -> FaceDir.WEST
+            FaceDir.WEST -> FaceDir.NORTH
+        }
+        
+        return currentStatus.copy(
+            faceDir = newFaceDir,
+            statusMessage = "Rotated right",
+            isMoving = false
+        )
+    }
+
+    /**
      * Moves the robot in an absolute direction (up, down, left, right on the map)
      * @param currentStatus Current robot status
      * @param absoluteDirection Absolute direction ("up", "down", "left", "right")
