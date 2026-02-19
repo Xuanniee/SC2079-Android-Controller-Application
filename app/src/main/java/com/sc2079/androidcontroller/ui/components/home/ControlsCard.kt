@@ -19,14 +19,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sc2079.androidcontroller.R
-import com.sc2079.androidcontroller.features.controller.domain.model.ActivityStatus
+import com.sc2079.androidcontroller.features.controller.domain.model.BluetoothStatus
+import com.sc2079.androidcontroller.navigation.Screen
 
 /**
  * Controls card component
  */
 @Composable
 fun ControlsCard(
-    activityStatus: ActivityStatus,
+    bluetoothStatus: BluetoothStatus,
     onUpClick: () -> Unit = {},
     onDownClick: () -> Unit = {},
     onLeftClick: () -> Unit = {},
@@ -60,7 +61,7 @@ fun ControlsCard(
             // Activity Status Card
             StatusCard(
                 title = stringResource(R.string.activity_status),
-                status = activityStatus,
+                status = bluetoothStatus,
                 modifier = Modifier.fillMaxWidth()
             )
             

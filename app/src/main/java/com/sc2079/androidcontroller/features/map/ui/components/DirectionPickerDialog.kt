@@ -1,9 +1,14 @@
 package com.sc2079.androidcontroller.features.map.ui.components
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.*
 
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 
@@ -19,26 +24,47 @@ fun DirectionPickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
-        title = { 
+        title = {
             Text(
-                title,
+                text = title,
                 color = MaterialTheme.colorScheme.onSurface
-            ) 
+            )
         },
         text = {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .selectableGroup(),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 FaceDir.entries.forEach { dir ->
-                    Row {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 44.dp)
+                            .selectable(
+                                selected = selected == dir,
+                                onClick = { selected = dir },
+                                role = Role.RadioButton
+                            )
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         RadioButton(
                             selected = selected == dir,
-                            onClick = { selected = dir },
+                            onClick = null,
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = MaterialTheme.colorScheme.primary
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                unselectedColor = MaterialTheme.colorScheme.outline
                             )
                         )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
                         Text(
-                            dir.name,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = dir.name,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
@@ -51,8 +77,8 @@ fun DirectionPickerDialog(
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary
                 )
-            ) { 
-                Text("Save") 
+            ) {
+                Text("Save")
             }
         },
         dismissButton = {
@@ -62,8 +88,8 @@ fun DirectionPickerDialog(
                     containerColor = MaterialTheme.colorScheme.secondary,
                     contentColor = MaterialTheme.colorScheme.onSecondary
                 )
-            ) { 
-                Text("Cancel") 
+            ) {
+                Text("Cancel")
             }
         }
     )

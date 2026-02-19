@@ -27,7 +27,8 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.sc2079.androidcontroller.features.controller.domain.model.ActivityStatus
+import com.sc2079.androidcontroller.features.controller.domain.model.BluetoothStatus
+
 
 /**
  * Status card component that displays activity status
@@ -35,7 +36,7 @@ import com.sc2079.androidcontroller.features.controller.domain.model.ActivitySta
 @Composable
 fun StatusCard(
     title: String,
-    status: ActivityStatus,
+    status: BluetoothStatus,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -94,13 +95,13 @@ fun StatusCard(
 /**
  * Get the text for the status
  */
-private fun getStatusText(status: ActivityStatus): String {
+private fun getStatusText(status: BluetoothStatus): String {
     return when (status) {
-        ActivityStatus.CONNECTED -> "Connected"
-        ActivityStatus.DISCONNECTED -> "Disconnected"
-        ActivityStatus.MOVING -> "Moving"
-        ActivityStatus.STOPPED -> "Stopped"
-        ActivityStatus.SCANNING -> "Scanning"
+        BluetoothStatus.CONNECTED -> "Connected"
+        BluetoothStatus.DISCONNECTED -> "Disconnected"
+        BluetoothStatus.MOVING -> "Moving"
+        BluetoothStatus.STOPPED -> "Stopped"
+        BluetoothStatus.SCANNING -> "Scanning"
     }
 }
 
@@ -108,13 +109,13 @@ private fun getStatusText(status: ActivityStatus): String {
  * Get the color for the status text
  */
 @Composable
-private fun getStatusColor(status: ActivityStatus): Color {
+private fun getStatusColor(status: BluetoothStatus): Color {
     return when (status) {
-        ActivityStatus.CONNECTED -> Color(0xFF4CAF50) // Green
-        ActivityStatus.DISCONNECTED -> Color(0xFFF44336) // Red
-        ActivityStatus.MOVING -> Color(0xFF2196F3) // Blue
-        ActivityStatus.STOPPED -> Color(0xFF9E9E9E) // Grey
-        ActivityStatus.SCANNING -> Color(0xFFFF9800) // Orange
+        BluetoothStatus.CONNECTED -> Color(0xFF4CAF50) // Green
+        BluetoothStatus.DISCONNECTED -> Color(0xFFF44336) // Red
+        BluetoothStatus.MOVING -> Color(0xFF2196F3) // Blue
+        BluetoothStatus.STOPPED -> Color(0xFF9E9E9E) // Grey
+        BluetoothStatus.SCANNING -> Color(0xFFFF9800) // Orange
     }
 }
 
@@ -122,26 +123,26 @@ private fun getStatusColor(status: ActivityStatus): Color {
  * Get the background color for the status indicator
  */
 @Composable
-private fun getStatusBackgroundColor(status: ActivityStatus): Color {
+private fun getStatusBackgroundColor(status: BluetoothStatus): Color {
     return when (status) {
-        ActivityStatus.CONNECTED -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-        ActivityStatus.DISCONNECTED -> Color(0xFFF44336).copy(alpha = 0.2f)
-        ActivityStatus.MOVING -> Color(0xFF2196F3).copy(alpha = 0.2f)
-        ActivityStatus.STOPPED -> Color(0xFF9E9E9E).copy(alpha = 0.2f)
-        ActivityStatus.SCANNING -> Color(0xFFFF9800).copy(alpha = 0.2f)
+        BluetoothStatus.CONNECTED -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+        BluetoothStatus.DISCONNECTED -> Color(0xFFF44336).copy(alpha = 0.2f)
+        BluetoothStatus.MOVING -> Color(0xFF2196F3).copy(alpha = 0.2f)
+        BluetoothStatus.STOPPED -> Color(0xFF9E9E9E).copy(alpha = 0.2f)
+        BluetoothStatus.SCANNING -> Color(0xFFFF9800).copy(alpha = 0.2f)
     }
 }
 
 /**
  * Get the icon for the status
  */
-private fun getStatusIcon(status: ActivityStatus): androidx.compose.ui.graphics.vector.ImageVector {
+private fun getStatusIcon(status: BluetoothStatus): androidx.compose.ui.graphics.vector.ImageVector {
     return when (status) {
-        ActivityStatus.CONNECTED -> Icons.Default.BluetoothConnected
-        ActivityStatus.DISCONNECTED -> Icons.Default.Bluetooth
-        ActivityStatus.MOVING -> Icons.Default.PlayArrow
-        ActivityStatus.STOPPED -> Icons.Default.Stop
-        ActivityStatus.SCANNING -> Icons.Default.BluetoothSearching
+        BluetoothStatus.CONNECTED -> Icons.Default.BluetoothConnected
+        BluetoothStatus.DISCONNECTED -> Icons.Default.Bluetooth
+        BluetoothStatus.MOVING -> Icons.Default.PlayArrow
+        BluetoothStatus.STOPPED -> Icons.Default.Stop
+        BluetoothStatus.SCANNING -> Icons.Default.BluetoothSearching
     }
 }
 
@@ -149,7 +150,7 @@ private fun getStatusIcon(status: ActivityStatus): androidx.compose.ui.graphics.
  * Get the icon color for the status
  */
 @Composable
-private fun getStatusIconColor(status: ActivityStatus): Color {
+private fun getStatusIconColor(status: BluetoothStatus): Color {
     return getStatusColor(status)
 }
 
@@ -157,6 +158,6 @@ private fun getStatusIconColor(status: ActivityStatus): Color {
  * Get the dot color for the status indicator
  */
 @Composable
-private fun getStatusDotColor(status: ActivityStatus): Color {
+private fun getStatusDotColor(status: BluetoothStatus): Color {
     return getStatusColor(status)
 }

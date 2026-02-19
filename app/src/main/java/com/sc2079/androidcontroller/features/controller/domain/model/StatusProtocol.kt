@@ -2,13 +2,13 @@ package com.sc2079.androidcontroller.features.controller.domain.model
 
 /**
  * Protocol for parsing status messages received from the robot via Bluetooth.
- * Maps incoming Bluetooth strings to ActivityStatus states.
+ * Maps incoming Bluetooth strings to BluetoothStatus states.
  *
  * Supported status message formats:
- * - "ROBOT,scanning" → ActivityStatus.SCANNING
- * - "ROBOT,connected" → ActivityStatus.CONNECTED
- * - "ROBOT,stopped" → ActivityStatus.STOPPED
- * - "ROBOT,<x>,<y>,<direction>" → ActivityStatus.MOVING (when parsed as position update)
+ * - "ROBOT,scanning" → BluetoothStatus.SCANNING
+ * - "ROBOT,connected" → BluetoothStatus.CONNECTED
+ * - "ROBOT,stopped" → BluetoothStatus.STOPPED
+ * - "ROBOT,<x>,<y>,<direction>" → BluetoothStatus.MOVING (when parsed as position update)
  */
 object StatusProtocol {
     /**
@@ -65,8 +65,8 @@ object StatusProtocol {
     }
 
     /**
-     * Parses a Bluetooth message and returns the corresponding ActivityStatus if applicable.
-     * This is the main function to use for parsing Bluetooth messages and getting ActivityStatus.
+     * Parses a Bluetooth message and returns the corresponding BluetoothStatus if applicable.
+     * This is the main function to use for parsing Bluetooth messages and getting BluetoothStatus.
      *
      * Priority order:
      * 1. SCANNING - if message is "ROBOT,scanning"
@@ -76,28 +76,28 @@ object StatusProtocol {
      * 5. null - if message doesn't match any known status pattern
      *
      * @param message Raw Bluetooth message string received from robot
-     * @return ActivityStatus if message matches a status pattern, null otherwise
+     * @return BluetoothStatus if message matches a status pattern, null otherwise
      */
-    fun parseStatusMessage(message: String): ActivityStatus? {
+    fun parseStatusMessage(message: String): BluetoothStatus? {
         return when {
-            isScanningMessage(message) -> ActivityStatus.SCANNING
-            isConnectedMessage(message) -> ActivityStatus.CONNECTED
-            isStoppedMessage(message) -> ActivityStatus.STOPPED
-            isMovingMessage(message) -> ActivityStatus.MOVING
+            isScanningMessage(message) -> BluetoothStatus.SCANNING
+            isConnectedMessage(message) -> BluetoothStatus.CONNECTED
+            isStoppedMessage(message) -> BluetoothStatus.STOPPED
+            isMovingMessage(message) -> BluetoothStatus.MOVING
             else -> null
         }
     }
 
     /**
-     * Parses a Bluetooth message and returns both ActivityStatus and whether it's a position update.
+     * Parses a Bluetooth message and returns both BluetoothStatus and whether it's a position update.
      * This is useful when you need to know if the message contains position data.
      *
      * @param message Raw Bluetooth message string received from robot
-     * @return Pair of (ActivityStatus?, isPositionUpdate: Boolean)
-     *         - ActivityStatus is null if message doesn't match any status pattern
+     * @return Pair of (BluetoothStatus?, isPositionUpdate: Boolean)
+     *         - BluetoothStatus is null if message doesn't match any status pattern
      *         - isPositionUpdate is true if message contains robot position data
      */
-    fun parseStatusWithPosition(message: String): Pair<ActivityStatus?, Boolean> {
+    fun parseStatusWithPosition(message: String): Pair<BluetoothStatus?, Boolean> {
         val status = parseStatusMessage(message)
         val isPositionUpdate = isMovingMessage(message)
         return Pair(status, isPositionUpdate)

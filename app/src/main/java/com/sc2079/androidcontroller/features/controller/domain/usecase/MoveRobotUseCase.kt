@@ -59,10 +59,14 @@ class MoveRobotUseCase(
      */
     fun moveForward(currentStatus: RobotStatus): RobotStatus {
         val (newX, newY) = when (currentStatus.faceDir) {
-            FaceDir.NORTH -> Pair(currentStatus.x, currentStatus.y - 1) // Move up
-            FaceDir.SOUTH -> Pair(currentStatus.x, currentStatus.y + 1) // Move down
-            FaceDir.WEST -> Pair(currentStatus.x - 1, currentStatus.y)  // Move left
-            FaceDir.EAST -> Pair(currentStatus.x + 1, currentStatus.y)  // Move right
+            // Move North if facing North
+            FaceDir.NORTH -> Pair(currentStatus.x, currentStatus.y + 1)
+            // Move South if facinfg South
+            FaceDir.SOUTH -> Pair(currentStatus.x, currentStatus.y - 1)
+            // Move West if facing West
+            FaceDir.WEST -> Pair(currentStatus.x - 1, currentStatus.y)
+            // Move East if facing East
+            FaceDir.EAST -> Pair(currentStatus.x + 1, currentStatus.y)
         }
         
         // Validate bounds
@@ -89,10 +93,11 @@ class MoveRobotUseCase(
      */
     fun moveBackward(currentStatus: RobotStatus): RobotStatus {
         val (newX, newY) = when (currentStatus.faceDir) {
-            FaceDir.NORTH -> Pair(currentStatus.x, currentStatus.y + 1) // Move down (opposite of NORTH)
-            FaceDir.SOUTH -> Pair(currentStatus.x, currentStatus.y - 1) // Move up (opposite of SOUTH)
-            FaceDir.WEST -> Pair(currentStatus.x + 1, currentStatus.y)  // Move right (opposite of WEST)
-            FaceDir.EAST -> Pair(currentStatus.x - 1, currentStatus.y)  // Move left (opposite of EAST)
+            // Reversed
+            FaceDir.NORTH -> Pair(currentStatus.x, currentStatus.y - 1)
+            FaceDir.SOUTH -> Pair(currentStatus.x, currentStatus.y + 1)
+            FaceDir.WEST -> Pair(currentStatus.x + 1, currentStatus.y)
+            FaceDir.EAST -> Pair(currentStatus.x - 1, currentStatus.y)
         }
         
         // Validate bounds

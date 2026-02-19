@@ -113,7 +113,7 @@ import com.sc2079.androidcontroller.ui.components.dialogs.ResetMapDialog
 import com.sc2079.androidcontroller.ui.components.dialogs.SaveMapDialog
 import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
 import com.sc2079.androidcontroller.features.controller.domain.ControlState
-import com.sc2079.androidcontroller.features.controller.domain.model.ActivityStatus
+import com.sc2079.androidcontroller.features.controller.domain.model.BluetoothStatus
 import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
 import com.sc2079.androidcontroller.features.controller.domain.model.StatusProtocol
 import com.sc2079.androidcontroller.features.controller.domain.usecase.MoveRobotUseCase
@@ -177,7 +177,7 @@ fun HomeScreen(
             val statusFromMessage = StatusProtocol.parseStatusMessage(message)
             
             when (statusFromMessage) {
-                ActivityStatus.SCANNING -> {
+                BluetoothStatus.SCANNING -> {
                     // Set scanning status
                     isRobotScanning = true
                     // Reset scanning status after 2 seconds
@@ -187,7 +187,7 @@ fun HomeScreen(
                     }
                     return@collect // Don't process further if it's a scanning message
                 }
-                ActivityStatus.CONNECTED -> {
+                BluetoothStatus.CONNECTED -> {
                     // Robot has confirmed connection
                     // Update robotStatus to indicate connected (but not moving)
                     robotStatus = robotStatus?.copy(
@@ -202,7 +202,7 @@ fun HomeScreen(
                     )
                     return@collect // Don't process further if it's a connected message
                 }
-                ActivityStatus.STOPPED -> {
+                BluetoothStatus.STOPPED -> {
                     // Update robotStatus to indicate stopped
                     robotStatus = robotStatus?.copy(
                         isMoving = false,
@@ -216,7 +216,7 @@ fun HomeScreen(
                     )
                     return@collect // Don't process further if it's a stopped message
                 }
-                ActivityStatus.MOVING -> {
+                BluetoothStatus.MOVING -> {
                     // Parse position data from the message
                     val events = RobotProtocolParser.parseRobotBatch(message)
                     events.forEach { event ->
@@ -345,25 +345,25 @@ fun HomeScreen(
         mapViewModel.applyRobotEvent(robotEvent)
     }
     
-    // Compute ActivityStatus based on Bluetooth state and robot status
-    val activityStatus = remember(bluetoothUiState.bluetoothConnState, bluetoothUiState.isScanning, robotStatus, isRobotScanning) {
+    // Compute BluetoothStatus based on Bluetooth state and robot status
+    val bluetoothStatus = remember(bluetoothUiState.bluetoothConnState, bluetoothUiState.isScanning, robotStatus, isRobotScanning) {
         when {
             // Scanning takes priority - check if robot sent "ROBOT" or "scanning" message
-            isRobotScanning -> ActivityStatus.SCANNING
-            bluetoothUiState.isScanning -> ActivityStatus.SCANNING
-            bluetoothUiState.bluetoothConnState is BluetoothConnState.Connecting -> ActivityStatus.SCANNING
-            bluetoothUiState.bluetoothConnState is BluetoothConnState.Listening -> ActivityStatus.SCANNING
+            isRobotScanning -> BluetoothStatus.SCANNING
+            bluetoothUiState.isScanning -> BluetoothStatus.SCANNING
+            bluetoothUiState.bluetoothConnState is BluetoothConnState.Connecting -> BluetoothStatus.SCANNING
+            bluetoothUiState.bluetoothConnState is BluetoothConnState.Listening -> BluetoothStatus.SCANNING
             // If connected, check robot movement status
             bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected -> {
                 when {
-                    robotStatus?.isMoving == true -> ActivityStatus.MOVING
-                    robotStatus?.statusMessage == "Connected" -> ActivityStatus.CONNECTED
-                    robotStatus != null -> ActivityStatus.STOPPED
-                    else -> ActivityStatus.CONNECTED
+                    robotStatus?.isMoving == true -> BluetoothStatus.MOVING
+                    robotStatus?.statusMessage == "Connected" -> BluetoothStatus.CONNECTED
+                    robotStatus != null -> BluetoothStatus.STOPPED
+                    else -> BluetoothStatus.CONNECTED
                 }
             }
             // Default to disconnected
-            else -> ActivityStatus.DISCONNECTED
+            else -> BluetoothStatus.DISCONNECTED
         }
     }
     
@@ -595,7 +595,7 @@ fun HomeScreen(
                                         1 -> {
                                             // Controls Card
                                             ControlsCard(
-                                                activityStatus = activityStatus,
+                                                bluetoothStatus = bluetoothStatus,
                                                 onUpClick = handleMoveUp,
                                                 onDownClick = handleMoveDown,
                                                 onLeftClick = handleMoveLeft,
@@ -633,7 +633,7 @@ fun HomeScreen(
                                 
                                 // Controls Card
                                 ControlsCard(
-                                    activityStatus = activityStatus,
+                                    bluetoothStatus = bluetoothStatus,
                                     onUpClick = handleMoveUp,
                                     onDownClick = handleMoveDown,
                                     onLeftClick = handleMoveLeft,
@@ -689,7 +689,7 @@ fun HomeScreen(
                                         1 -> {
                                             // Controls Card
                                             ControlsCard(
-                                                activityStatus = activityStatus,
+                                                bluetoothStatus = bluetoothStatus,
                                                 onUpClick = handleMoveUp,
                                                 onDownClick = handleMoveDown,
                                                 onLeftClick = handleMoveLeft,
@@ -727,7 +727,7 @@ fun HomeScreen(
                                 
                                 // Controls Card
                                 ControlsCard(
-                                    activityStatus = activityStatus,
+                                    bluetoothStatus = bluetoothStatus,
                                     onUpClick = handleMoveUp,
                                     onDownClick = handleMoveDown,
                                     onLeftClick = handleMoveLeft,
@@ -912,7 +912,7 @@ fun HomeScreen(
                                 1 -> {
                                     // Controls Card
                                     ControlsCard(
-                                        activityStatus = activityStatus,
+                                        bluetoothStatus = bluetoothStatus,
                                         onUpClick = handleMoveUp,
                                         onDownClick = handleMoveDown,
                                         onLeftClick = handleMoveLeft,
@@ -948,7 +948,7 @@ fun HomeScreen(
                                 
                                 // Controls Card - 1/2 width
                                 ControlsCard(
-                                    activityStatus = activityStatus,
+                                    bluetoothStatus = bluetoothStatus,
                                     onUpClick = handleMoveUp,
                                     onDownClick = handleMoveDown,
                                     onLeftClick = handleMoveLeft,
@@ -958,7 +958,7 @@ fun HomeScreen(
                             } else {
                                 // Left-handed: Controls Card on left, Map Actions Card on right
                                 ControlsCard(
-                                    activityStatus = activityStatus,
+                                    bluetoothStatus = bluetoothStatus,
                                     onUpClick = handleMoveUp,
                                     onDownClick = handleMoveDown,
                                     onLeftClick = handleMoveLeft,

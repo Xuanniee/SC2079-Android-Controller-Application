@@ -9,7 +9,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 
@@ -29,273 +28,189 @@ object ThemeState {
     var currentTheme by mutableStateOf(ThemeMode.LIGHT)
 }
 
-// Light Mode Color Scheme - Custom OKLCH colors
-// Primary: White, Secondary: oklch(92.9% 0.013 255.508), Tertiary: oklch(86.9% 0.022 252.894)
-// Text: oklch(27.9% 0.041 260.031)
-// Error: oklch(63.7% 0.237 25.331), Success: oklch(79.2% 0.209 151.711), Warning: oklch(82.8% 0.189 84.429)
+/**
+ * Cohesive Light scheme:
+ * - primary is AccentBlue (NOT white) => selected controls are visible
+ * - surfaces are slate neutrals
+ */
 private val LightColorScheme = lightColorScheme(
-    primary = White,
-    onPrimary = DarkText,
-    primaryContainer = LightSecondary,
-    onPrimaryContainer = DarkText,
-    
-    secondary = LightSecondary, // oklch(92.9% 0.013 255.508)
-    onSecondary = DarkText,
-    secondaryContainer = LightSecondary,
-    onSecondaryContainer = DarkText,
-    
-    tertiary = LightTertiary, // oklch(86.9% 0.022 252.894)
-    onTertiary = DarkText,
-    tertiaryContainer = LightTertiary,
-    onTertiaryContainer = DarkText,
-    
-    background = White,
-    onBackground = DarkText,
-    
-    surface = White,
-    onSurface = DarkText,
-    surfaceVariant = LightTertiary,
-    onSurfaceVariant = DarkText,
-    
-    outline = SlateGray300,
-    outlineVariant = LightSecondary,
-    
-    error = CustomError, // Red: oklch(63.7% 0.237 25.331)
+    primary = AccentBlue,
+    onPrimary = OnAccentBlue,
+    primaryContainer = AccentBlueContainer,
+    onPrimaryContainer = Color(0xFF0B1B3A),
+
+    secondary = SlateLight,
+    onSecondary = White,
+    secondaryContainer = LightSurfaceVariant,
+    onSecondaryContainer = LightOnVariant,
+
+    tertiary = Color(0xFF0EA5E9),
+    onTertiary = White,
+    tertiaryContainer = Color(0xFFE0F2FE),
+    onTertiaryContainer = Color(0xFF0C4A6E),
+
+    background = LightBackground,
+    onBackground = LightOn,
+
+    surface = LightSurface,
+    onSurface = LightOn,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = LightOnVariant,
+
+    outline = LightOutline,
+    outlineVariant = SlateGray200,
+
+    error = CustomError,
     onError = White,
     errorContainer = Color(0xFFFEE2E2),
-    onErrorContainer = CustomError
-)
-
-// Dark Mode Color Scheme - Using OKLCH colors
-// Primary: oklch(37.2% 0.044 257.287), Secondary: oklch(55.4% 0.046 257.417), Tertiary: oklch(70.4% 0.04 256.788)
-// Error: oklch(63.7% 0.237 25.331), Success: oklch(79.2% 0.209 151.711), Warning: oklch(82.8% 0.189 84.429)
-private val DarkColorScheme = darkColorScheme(
-    primary = DarkPrimary, // oklch(37.2% 0.044 257.287)
-    onPrimary = SlateGray200,
-    primaryContainer = DarkPrimary,
-    onPrimaryContainer = SlateGray200,
-    
-    secondary = DarkSecondary, // oklch(55.4% 0.046 257.417)
-    onSecondary = SlateGray200,
-    secondaryContainer = DarkSecondary,
-    onSecondaryContainer = SlateGray200,
-    
-    tertiary = DarkTertiary, // oklch(70.4% 0.04 256.788)
-    onTertiary = DarkBackground,
-    tertiaryContainer = DarkTertiary,
-    onTertiaryContainer = SlateGray200,
-    
-    background = DarkBackground,
-    onBackground = SlateGray200,
-    
-    surface = DarkSurface,
-    onSurface = SlateGray200,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = SlateGray400,
-    
-    outline = SlateGray400,
-    outlineVariant = DarkSurfaceVariant,
-    
-    error = CustomError, // Red: oklch(63.7% 0.237 25.331) - same OKLCH color
-    onError = White,
-    errorContainer = Color(0xFF7F1D1D),
-    onErrorContainer = Color(0xFFFF6B6B) // Lighter version for dark mode
-)
-
-// High Contrast Mode Color Scheme
-private val ContrastColorScheme = lightColorScheme(
-    primary = ContrastBlack,
-    onPrimary = ContrastWhite,
-    primaryContainer = ContrastYellow,
-    onPrimaryContainer = ContrastBlack,
-    
-    secondary = ContrastBlack,
-    onSecondary = ContrastWhite,
-    secondaryContainer = ContrastCyan,
-    onSecondaryContainer = ContrastBlack,
-    
-    tertiary = ContrastBlack,
-    onTertiary = ContrastWhite,
-    tertiaryContainer = ContrastYellow,
-    onTertiaryContainer = ContrastBlack,
-    
-    background = ContrastWhite,
-    onBackground = ContrastBlack,
-    
-    surface = ContrastWhite,
-    onSurface = ContrastBlack,
-    surfaceVariant = ContrastYellow,
-    onSurfaceVariant = ContrastBlack,
-    
-    outline = ContrastBlack,
-    outlineVariant = ContrastBlack,
-    
-    error = CustomError, // Red: oklch(63.7% 0.237 25.331)
-    onError = ContrastWhite,
-    errorContainer = ContrastYellow,
-    onErrorContainer = ContrastBlack
+    onErrorContainer = Color(0xFF7F1D1D)
 )
 
 /**
- * Creates an animated ColorScheme that transitions between two schemes over 3 seconds
+ * Cohesive Dark scheme:
+ * - same brand primary
+ * - deep slate surfaces
+ */
+private val DarkColorScheme = darkColorScheme(
+    primary = AccentBlue,
+    onPrimary = White,
+    primaryContainer = Color(0xFF1E3A8A),
+    onPrimaryContainer = AccentBlueContainer,
+
+    secondary = SlateGray400,
+    onSecondary = DarkBackground,
+    secondaryContainer = DarkSurfaceVariant,
+    onSecondaryContainer = DarkOn,
+
+    tertiary = Color(0xFF38BDF8),
+    onTertiary = Color(0xFF082F49),
+    tertiaryContainer = Color(0xFF0C4A6E),
+    onTertiaryContainer = Color(0xFFE0F2FE),
+
+    background = DarkBackground,
+    onBackground = DarkOn,
+
+    surface = DarkSurface,
+    onSurface = DarkOn,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkOnVariant,
+
+    outline = DarkOutline,
+    outlineVariant = DarkSurfaceVariant,
+
+    error = CustomError,
+    onError = White,
+    errorContainer = Color(0xFF7F1D1D),
+    onErrorContainer = Color(0xFFFCA5A5)
+)
+
+/**
+ * High Contrast scheme (kept simple + accessible)
+ */
+private val ContrastColorScheme = lightColorScheme(
+    primary = Color(0xFF000000),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFFFFFF00),
+    onPrimaryContainer = Color(0xFF000000),
+
+    secondary = Color(0xFF000000),
+    onSecondary = Color(0xFFFFFFFF),
+    secondaryContainer = Color(0xFF00FFFF),
+    onSecondaryContainer = Color(0xFF000000),
+
+    tertiary = Color(0xFF000000),
+    onTertiary = Color(0xFFFFFFFF),
+    tertiaryContainer = Color(0xFFFFFF00),
+    onTertiaryContainer = Color(0xFF000000),
+
+    background = Color(0xFFFFFFFF),
+    onBackground = Color(0xFF000000),
+
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF000000),
+    surfaceVariant = Color(0xFFFFFF00),
+    onSurfaceVariant = Color(0xFF000000),
+
+    outline = Color(0xFF000000),
+    outlineVariant = Color(0xFF000000),
+
+    error = CustomError,
+    onError = Color(0xFFFFFFFF),
+    errorContainer = Color(0xFFFFFF00),
+    onErrorContainer = Color(0xFF000000)
+)
+
+/**
+ * Creates an animated ColorScheme that transitions between two schemes
  */
 @Composable
 private fun animatedColorScheme(
     targetScheme: ColorScheme,
     durationMillis: Int = 3000
 ): ColorScheme {
-    val animatedPrimary by animateColorAsState(
-        targetValue = targetScheme.primary,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "primary"
-    )
-    val animatedOnPrimary by animateColorAsState(
-        targetValue = targetScheme.onPrimary,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onPrimary"
-    )
-    val animatedPrimaryContainer by animateColorAsState(
-        targetValue = targetScheme.primaryContainer,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "primaryContainer"
-    )
-    val animatedOnPrimaryContainer by animateColorAsState(
-        targetValue = targetScheme.onPrimaryContainer,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onPrimaryContainer"
-    )
-    
-    val animatedSecondary by animateColorAsState(
-        targetValue = targetScheme.secondary,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "secondary"
-    )
-    val animatedOnSecondary by animateColorAsState(
-        targetValue = targetScheme.onSecondary,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onSecondary"
-    )
-    val animatedSecondaryContainer by animateColorAsState(
-        targetValue = targetScheme.secondaryContainer,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "secondaryContainer"
-    )
-    val animatedOnSecondaryContainer by animateColorAsState(
-        targetValue = targetScheme.onSecondaryContainer,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onSecondaryContainer"
-    )
-    
-    val animatedTertiary by animateColorAsState(
-        targetValue = targetScheme.tertiary,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "tertiary"
-    )
-    val animatedOnTertiary by animateColorAsState(
-        targetValue = targetScheme.onTertiary,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onTertiary"
-    )
-    val animatedTertiaryContainer by animateColorAsState(
-        targetValue = targetScheme.tertiaryContainer,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "tertiaryContainer"
-    )
-    val animatedOnTertiaryContainer by animateColorAsState(
-        targetValue = targetScheme.onTertiaryContainer,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onTertiaryContainer"
-    )
-    
-    val animatedBackground by animateColorAsState(
-        targetValue = targetScheme.background,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "background"
-    )
-    val animatedOnBackground by animateColorAsState(
-        targetValue = targetScheme.onBackground,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onBackground"
-    )
-    
-    val animatedSurface by animateColorAsState(
-        targetValue = targetScheme.surface,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "surface"
-    )
-    val animatedOnSurface by animateColorAsState(
-        targetValue = targetScheme.onSurface,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onSurface"
-    )
-    val animatedSurfaceVariant by animateColorAsState(
-        targetValue = targetScheme.surfaceVariant,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "surfaceVariant"
-    )
-    val animatedOnSurfaceVariant by animateColorAsState(
-        targetValue = targetScheme.onSurfaceVariant,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onSurfaceVariant"
-    )
-    
-    val animatedOutline by animateColorAsState(
-        targetValue = targetScheme.outline,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "outline"
-    )
-    val animatedOutlineVariant by animateColorAsState(
-        targetValue = targetScheme.outlineVariant,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "outlineVariant"
-    )
-    
-    val animatedError by animateColorAsState(
-        targetValue = targetScheme.error,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "error"
-    )
-    val animatedOnError by animateColorAsState(
-        targetValue = targetScheme.onError,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onError"
-    )
-    val animatedErrorContainer by animateColorAsState(
-        targetValue = targetScheme.errorContainer,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "errorContainer"
-    )
-    val animatedOnErrorContainer by animateColorAsState(
-        targetValue = targetScheme.onErrorContainer,
-        animationSpec = tween(durationMillis = durationMillis),
-        label = "onErrorContainer"
-    )
-    
+
+    val primary by animateColorAsState(targetScheme.primary, tween(durationMillis), label = "primary")
+    val onPrimary by animateColorAsState(targetScheme.onPrimary, tween(durationMillis), label = "onPrimary")
+    val primaryContainer by animateColorAsState(targetScheme.primaryContainer, tween(durationMillis), label = "primaryContainer")
+    val onPrimaryContainer by animateColorAsState(targetScheme.onPrimaryContainer, tween(durationMillis), label = "onPrimaryContainer")
+
+    val secondary by animateColorAsState(targetScheme.secondary, tween(durationMillis), label = "secondary")
+    val onSecondary by animateColorAsState(targetScheme.onSecondary, tween(durationMillis), label = "onSecondary")
+    val secondaryContainer by animateColorAsState(targetScheme.secondaryContainer, tween(durationMillis), label = "secondaryContainer")
+    val onSecondaryContainer by animateColorAsState(targetScheme.onSecondaryContainer, tween(durationMillis), label = "onSecondaryContainer")
+
+    val tertiary by animateColorAsState(targetScheme.tertiary, tween(durationMillis), label = "tertiary")
+    val onTertiary by animateColorAsState(targetScheme.onTertiary, tween(durationMillis), label = "onTertiary")
+    val tertiaryContainer by animateColorAsState(targetScheme.tertiaryContainer, tween(durationMillis), label = "tertiaryContainer")
+    val onTertiaryContainer by animateColorAsState(targetScheme.onTertiaryContainer, tween(durationMillis), label = "onTertiaryContainer")
+
+    val background by animateColorAsState(targetScheme.background, tween(durationMillis), label = "background")
+    val onBackground by animateColorAsState(targetScheme.onBackground, tween(durationMillis), label = "onBackground")
+
+    val surface by animateColorAsState(targetScheme.surface, tween(durationMillis), label = "surface")
+    val onSurface by animateColorAsState(targetScheme.onSurface, tween(durationMillis), label = "onSurface")
+    val surfaceVariant by animateColorAsState(targetScheme.surfaceVariant, tween(durationMillis), label = "surfaceVariant")
+    val onSurfaceVariant by animateColorAsState(targetScheme.onSurfaceVariant, tween(durationMillis), label = "onSurfaceVariant")
+
+    val outline by animateColorAsState(targetScheme.outline, tween(durationMillis), label = "outline")
+    val outlineVariant by animateColorAsState(targetScheme.outlineVariant, tween(durationMillis), label = "outlineVariant")
+
+    val error by animateColorAsState(targetScheme.error, tween(durationMillis), label = "error")
+    val onError by animateColorAsState(targetScheme.onError, tween(durationMillis), label = "onError")
+    val errorContainer by animateColorAsState(targetScheme.errorContainer, tween(durationMillis), label = "errorContainer")
+    val onErrorContainer by animateColorAsState(targetScheme.onErrorContainer, tween(durationMillis), label = "onErrorContainer")
+
     return targetScheme.copy(
-        primary = animatedPrimary,
-        onPrimary = animatedOnPrimary,
-        primaryContainer = animatedPrimaryContainer,
-        onPrimaryContainer = animatedOnPrimaryContainer,
-        secondary = animatedSecondary,
-        onSecondary = animatedOnSecondary,
-        secondaryContainer = animatedSecondaryContainer,
-        onSecondaryContainer = animatedOnSecondaryContainer,
-        tertiary = animatedTertiary,
-        onTertiary = animatedOnTertiary,
-        tertiaryContainer = animatedTertiaryContainer,
-        onTertiaryContainer = animatedOnTertiaryContainer,
-        background = animatedBackground,
-        onBackground = animatedOnBackground,
-        surface = animatedSurface,
-        onSurface = animatedOnSurface,
-        surfaceVariant = animatedSurfaceVariant,
-        onSurfaceVariant = animatedOnSurfaceVariant,
-        outline = animatedOutline,
-        outlineVariant = animatedOutlineVariant,
-        error = animatedError,
-        onError = animatedOnError,
-        errorContainer = animatedErrorContainer,
-        onErrorContainer = animatedOnErrorContainer
+        primary = primary,
+        onPrimary = onPrimary,
+        primaryContainer = primaryContainer,
+        onPrimaryContainer = onPrimaryContainer,
+
+        secondary = secondary,
+        onSecondary = onSecondary,
+        secondaryContainer = secondaryContainer,
+        onSecondaryContainer = onSecondaryContainer,
+
+        tertiary = tertiary,
+        onTertiary = onTertiary,
+        tertiaryContainer = tertiaryContainer,
+        onTertiaryContainer = onTertiaryContainer,
+
+        background = background,
+        onBackground = onBackground,
+
+        surface = surface,
+        onSurface = onSurface,
+        surfaceVariant = surfaceVariant,
+        onSurfaceVariant = onSurfaceVariant,
+
+        outline = outline,
+        outlineVariant = outlineVariant,
+
+        error = error,
+        onError = onError,
+        errorContainer = errorContainer,
+        onErrorContainer = onErrorContainer
     )
 }
 
@@ -309,16 +224,342 @@ fun SC2079AndroidControllerApplicationTheme(
         ThemeMode.DARK -> DarkColorScheme
         ThemeMode.CONTRAST -> ContrastColorScheme
     }
-    
-    // Animate color scheme transition over 3 seconds
-    val animatedColorScheme = animatedColorScheme(
+
+    val animated = animatedColorScheme(
         targetScheme = targetColorScheme,
         durationMillis = 3000
     )
 
     MaterialTheme(
-        colorScheme = animatedColorScheme,
+        colorScheme = animated,
         typography = Typography,
         content = content
     )
 }
+
+
+// OLD ONE
+//package com.sc2079.androidcontroller.ui.theme
+//
+//import androidx.compose.animation.animateColorAsState
+//import androidx.compose.animation.core.tween
+//import androidx.compose.material3.ColorScheme
+//import androidx.compose.material3.MaterialTheme
+//import androidx.compose.material3.darkColorScheme
+//import androidx.compose.material3.lightColorScheme
+//import androidx.compose.runtime.Composable
+//import androidx.compose.runtime.getValue
+//import androidx.compose.runtime.mutableStateOf
+//import androidx.compose.runtime.remember
+//import androidx.compose.runtime.setValue
+//import androidx.compose.ui.graphics.Color
+//
+///**
+// * Theme mode options
+// */
+//enum class ThemeMode {
+//    LIGHT,
+//    DARK,
+//    CONTRAST
+//}
+//
+///**
+// * Global theme state holder
+// */
+//object ThemeState {
+//    var currentTheme by mutableStateOf(ThemeMode.LIGHT)
+//}
+//
+//// Light Mode Color Scheme - Custom OKLCH colors
+//// Primary: White, Secondary: oklch(92.9% 0.013 255.508), Tertiary: oklch(86.9% 0.022 252.894)
+//// Text: oklch(27.9% 0.041 260.031)
+//// Error: oklch(63.7% 0.237 25.331), Success: oklch(79.2% 0.209 151.711), Warning: oklch(82.8% 0.189 84.429)
+//private val LightColorScheme = lightColorScheme(
+//    primary = White,
+//    onPrimary = DarkText,
+//    primaryContainer = LightSecondary,
+//    onPrimaryContainer = DarkText,
+//
+//    secondary = LightSecondary, // oklch(92.9% 0.013 255.508)
+//    onSecondary = DarkText,
+//    secondaryContainer = LightSecondary,
+//    onSecondaryContainer = DarkText,
+//
+//    tertiary = LightTertiary, // oklch(86.9% 0.022 252.894)
+//    onTertiary = DarkText,
+//    tertiaryContainer = LightTertiary,
+//    onTertiaryContainer = DarkText,
+//
+//    background = White,
+//    onBackground = DarkText,
+//
+//    surface = White,
+//    onSurface = DarkText,
+//    surfaceVariant = LightTertiary,
+//    onSurfaceVariant = DarkText,
+//
+//    outline = SlateGray300,
+//    outlineVariant = LightSecondary,
+//
+//    error = CustomError, // Red: oklch(63.7% 0.237 25.331)
+//    onError = White,
+//    errorContainer = Color(0xFFFEE2E2),
+//    onErrorContainer = CustomError
+//)
+//
+//// Dark Mode Color Scheme - Using OKLCH colors
+//// Primary: oklch(37.2% 0.044 257.287), Secondary: oklch(55.4% 0.046 257.417), Tertiary: oklch(70.4% 0.04 256.788)
+//// Error: oklch(63.7% 0.237 25.331), Success: oklch(79.2% 0.209 151.711), Warning: oklch(82.8% 0.189 84.429)
+//private val DarkColorScheme = darkColorScheme(
+//    primary = DarkPrimary, // oklch(37.2% 0.044 257.287)
+//    onPrimary = SlateGray200,
+//    primaryContainer = DarkPrimary,
+//    onPrimaryContainer = SlateGray200,
+//
+//    secondary = DarkSecondary, // oklch(55.4% 0.046 257.417)
+//    onSecondary = SlateGray200,
+//    secondaryContainer = DarkSecondary,
+//    onSecondaryContainer = SlateGray200,
+//
+//    tertiary = DarkTertiary, // oklch(70.4% 0.04 256.788)
+//    onTertiary = DarkBackground,
+//    tertiaryContainer = DarkTertiary,
+//    onTertiaryContainer = SlateGray200,
+//
+//    background = DarkBackground,
+//    onBackground = SlateGray200,
+//
+//    surface = DarkSurface,
+//    onSurface = SlateGray200,
+//    surfaceVariant = DarkSurfaceVariant,
+//    onSurfaceVariant = SlateGray400,
+//
+//    outline = SlateGray400,
+//    outlineVariant = DarkSurfaceVariant,
+//
+//    error = CustomError, // Red: oklch(63.7% 0.237 25.331) - same OKLCH color
+//    onError = White,
+//    errorContainer = Color(0xFF7F1D1D),
+//    onErrorContainer = Color(0xFFFF6B6B) // Lighter version for dark mode
+//)
+//
+//// High Contrast Mode Color Scheme
+//private val ContrastColorScheme = lightColorScheme(
+//    primary = ContrastBlack,
+//    onPrimary = ContrastWhite,
+//    primaryContainer = ContrastYellow,
+//    onPrimaryContainer = ContrastBlack,
+//
+//    secondary = ContrastBlack,
+//    onSecondary = ContrastWhite,
+//    secondaryContainer = ContrastCyan,
+//    onSecondaryContainer = ContrastBlack,
+//
+//    tertiary = ContrastBlack,
+//    onTertiary = ContrastWhite,
+//    tertiaryContainer = ContrastYellow,
+//    onTertiaryContainer = ContrastBlack,
+//
+//    background = ContrastWhite,
+//    onBackground = ContrastBlack,
+//
+//    surface = ContrastWhite,
+//    onSurface = ContrastBlack,
+//    surfaceVariant = ContrastYellow,
+//    onSurfaceVariant = ContrastBlack,
+//
+//    outline = ContrastBlack,
+//    outlineVariant = ContrastBlack,
+//
+//    error = CustomError, // Red: oklch(63.7% 0.237 25.331)
+//    onError = ContrastWhite,
+//    errorContainer = ContrastYellow,
+//    onErrorContainer = ContrastBlack
+//)
+//
+///**
+// * Creates an animated ColorScheme that transitions between two schemes over 3 seconds
+// */
+//@Composable
+//private fun animatedColorScheme(
+//    targetScheme: ColorScheme,
+//    durationMillis: Int = 3000
+//): ColorScheme {
+//    val animatedPrimary by animateColorAsState(
+//        targetValue = targetScheme.primary,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "primary"
+//    )
+//    val animatedOnPrimary by animateColorAsState(
+//        targetValue = targetScheme.onPrimary,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onPrimary"
+//    )
+//    val animatedPrimaryContainer by animateColorAsState(
+//        targetValue = targetScheme.primaryContainer,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "primaryContainer"
+//    )
+//    val animatedOnPrimaryContainer by animateColorAsState(
+//        targetValue = targetScheme.onPrimaryContainer,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onPrimaryContainer"
+//    )
+//
+//    val animatedSecondary by animateColorAsState(
+//        targetValue = targetScheme.secondary,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "secondary"
+//    )
+//    val animatedOnSecondary by animateColorAsState(
+//        targetValue = targetScheme.onSecondary,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onSecondary"
+//    )
+//    val animatedSecondaryContainer by animateColorAsState(
+//        targetValue = targetScheme.secondaryContainer,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "secondaryContainer"
+//    )
+//    val animatedOnSecondaryContainer by animateColorAsState(
+//        targetValue = targetScheme.onSecondaryContainer,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onSecondaryContainer"
+//    )
+//
+//    val animatedTertiary by animateColorAsState(
+//        targetValue = targetScheme.tertiary,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "tertiary"
+//    )
+//    val animatedOnTertiary by animateColorAsState(
+//        targetValue = targetScheme.onTertiary,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onTertiary"
+//    )
+//    val animatedTertiaryContainer by animateColorAsState(
+//        targetValue = targetScheme.tertiaryContainer,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "tertiaryContainer"
+//    )
+//    val animatedOnTertiaryContainer by animateColorAsState(
+//        targetValue = targetScheme.onTertiaryContainer,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onTertiaryContainer"
+//    )
+//
+//    val animatedBackground by animateColorAsState(
+//        targetValue = targetScheme.background,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "background"
+//    )
+//    val animatedOnBackground by animateColorAsState(
+//        targetValue = targetScheme.onBackground,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onBackground"
+//    )
+//
+//    val animatedSurface by animateColorAsState(
+//        targetValue = targetScheme.surface,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "surface"
+//    )
+//    val animatedOnSurface by animateColorAsState(
+//        targetValue = targetScheme.onSurface,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onSurface"
+//    )
+//    val animatedSurfaceVariant by animateColorAsState(
+//        targetValue = targetScheme.surfaceVariant,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "surfaceVariant"
+//    )
+//    val animatedOnSurfaceVariant by animateColorAsState(
+//        targetValue = targetScheme.onSurfaceVariant,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onSurfaceVariant"
+//    )
+//
+//    val animatedOutline by animateColorAsState(
+//        targetValue = targetScheme.outline,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "outline"
+//    )
+//    val animatedOutlineVariant by animateColorAsState(
+//        targetValue = targetScheme.outlineVariant,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "outlineVariant"
+//    )
+//
+//    val animatedError by animateColorAsState(
+//        targetValue = targetScheme.error,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "error"
+//    )
+//    val animatedOnError by animateColorAsState(
+//        targetValue = targetScheme.onError,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onError"
+//    )
+//    val animatedErrorContainer by animateColorAsState(
+//        targetValue = targetScheme.errorContainer,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "errorContainer"
+//    )
+//    val animatedOnErrorContainer by animateColorAsState(
+//        targetValue = targetScheme.onErrorContainer,
+//        animationSpec = tween(durationMillis = durationMillis),
+//        label = "onErrorContainer"
+//    )
+//
+//    return targetScheme.copy(
+//        primary = animatedPrimary,
+//        onPrimary = animatedOnPrimary,
+//        primaryContainer = animatedPrimaryContainer,
+//        onPrimaryContainer = animatedOnPrimaryContainer,
+//        secondary = animatedSecondary,
+//        onSecondary = animatedOnSecondary,
+//        secondaryContainer = animatedSecondaryContainer,
+//        onSecondaryContainer = animatedOnSecondaryContainer,
+//        tertiary = animatedTertiary,
+//        onTertiary = animatedOnTertiary,
+//        tertiaryContainer = animatedTertiaryContainer,
+//        onTertiaryContainer = animatedOnTertiaryContainer,
+//        background = animatedBackground,
+//        onBackground = animatedOnBackground,
+//        surface = animatedSurface,
+//        onSurface = animatedOnSurface,
+//        surfaceVariant = animatedSurfaceVariant,
+//        onSurfaceVariant = animatedOnSurfaceVariant,
+//        outline = animatedOutline,
+//        outlineVariant = animatedOutlineVariant,
+//        error = animatedError,
+//        onError = animatedOnError,
+//        errorContainer = animatedErrorContainer,
+//        onErrorContainer = animatedOnErrorContainer
+//    )
+//}
+//
+//@Composable
+//fun SC2079AndroidControllerApplicationTheme(
+//    themeMode: ThemeMode = ThemeState.currentTheme,
+//    content: @Composable () -> Unit
+//) {
+//    val targetColorScheme = when (themeMode) {
+//        ThemeMode.LIGHT -> LightColorScheme
+//        ThemeMode.DARK -> DarkColorScheme
+//        ThemeMode.CONTRAST -> ContrastColorScheme
+//    }
+//
+//    // Animate color scheme transition over 3 seconds
+//    val animatedColorScheme = animatedColorScheme(
+//        targetScheme = targetColorScheme,
+//        durationMillis = 3000
+//    )
+//
+//    MaterialTheme(
+//        colorScheme = animatedColorScheme,
+//        typography = Typography,
+//        content = content
+//    )
+//}

@@ -32,6 +32,8 @@ import com.sc2079.androidcontroller.features.controller.domain.usecase.MoveRobot
 import com.sc2079.androidcontroller.features.controller.domain.usecase.RobotControlBluetoothModule
 import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
 import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
+import com.sc2079.androidcontroller.features.controller.domain.model.BluetoothStatus
+import com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +59,19 @@ fun MappingHomeScreen(
         )
     }
 
+    // Track the Status of the BT Connection on the Controls
+    val bluetoothStatus = remember(btUi.bluetoothConnState, btUi.isScanning, robotStatus) {
+        when {
+            btUi.isScanning -> BluetoothStatus.SCANNING
+            btUi.bluetoothConnState is BluetoothConnState.Connecting -> BluetoothStatus.SCANNING
+            btUi.bluetoothConnState is BluetoothConnState.Listening -> BluetoothStatus.SCANNING
+            btUi.bluetoothConnState is BluetoothConnState.Connected -> {
+                if (robotStatus?.isMoving == true) BluetoothStatus.MOVING else BluetoothStatus.CONNECTED
+            }
+            else -> BluetoothStatus.DISCONNECTED
+        }
+    }
+
     // Update robotStatus when map's robot position changes
     LaunchedEffect(uiState.robotPosition) {
         uiState.robotPosition?.let { robotPos ->
@@ -65,59 +80,104 @@ fun MappingHomeScreen(
     }
 
     // Handler for direction button presses (DPad)
-    val handleDirection = { direction: Direction ->
-        val current = robotStatus ?: RobotStatus.fromPosition(0, 0, FaceDir.NORTH)
-        
+    val handleDirection: (Direction) -> Unit = { direction ->
+        // Determine the current position of the Robot
+        val current = robotStatus
+            ?: RobotStatus.fromPosition(
+                uiState.robotPosition?.x ?: 0,
+                uiState.robotPosition?.y ?: 0,
+                uiState.robotPosition?.faceDir ?: FaceDir.NORTH
+            )
+
+        // Determine the new state of the robot
         val newStatus = when (direction) {
+            // Move forward
             Direction.NORTH -> {
-                // Up button: Move forward in the direction robot is facing
                 robotControlModule.moveForward(current)
             }
+
+            // Move backward
             Direction.SOUTH -> {
-                // Down button: Move backward (opposite to facing direction)
                 robotControlModule.moveBackward(current)
             }
+
+            // Left and Right is to rotate the Robot
             Direction.WEST -> {
-                // Left button: Rotate robot 90 degrees left (counter-clockwise)
-                robotControlModule.rotateLeft(current)
+                // Rotate Left
+                val rotated = robotControlModule.rotateLeft(current)
+
+                // Immediately update map direction after rotation
+                mapViewModel.applyRobotEvent(
+                    com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
+                        .RobotPositionEvent(
+                            x = rotated.x,
+                            y = rotated.y,
+                            faceDir = rotated.faceDir
+                        )
+                )
+
+                // Return the res of Rotation
+                rotated
             }
+
+            // Same but rotate right
             Direction.EAST -> {
-                // Right button: Rotate robot 90 degrees right (clockwise)
-                robotControlModule.rotateRight(current)
+                val rotated = robotControlModule.rotateRight(current)
+                mapViewModel.applyRobotEvent(
+                    com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
+                        .RobotPositionEvent(
+                            x = rotated.x,
+                            y = rotated.y,
+                            faceDir = rotated.faceDir
+                        )
+                )
+                rotated
             }
         }
-        
+
+        // Update the robotStatus with the new Status
         robotStatus = newStatus
-        
-        // Update map's robot position when status changes
-        val currentPos = uiState.robotPosition
-        if (currentPos != null) {
-            // Check if position or direction changed
-            val positionChanged = newStatus.x != current.x || newStatus.y != current.y
-            val directionChanged = newStatus.faceDir != current.faceDir
-            
-            if (positionChanged) {
-                // Position changed - update map with new position
-                // Temporarily switch to SetStart mode to update robot position
-                val oldMode = uiState.editMode
-                mapViewModel.setEditMode(MapEditMode.SetStart)
-                mapViewModel.onTapCell(newStatus.x, newStatus.y)
-                mapViewModel.setEditMode(oldMode)
-            } else if (directionChanged) {
-                // Only direction changed - update robot position with new direction
-                // Temporarily switch to SetStart mode to update robot direction
-                val oldMode = uiState.editMode
-                mapViewModel.setEditMode(MapEditMode.SetStart)
-                mapViewModel.onTapCell(newStatus.x, newStatus.y)
-                mapViewModel.setEditMode(oldMode)
-            }
-        } else if (newStatus.x != current.x || newStatus.y != current.y) {
-            // No robot position yet, but we're moving - set initial position
-            val oldMode = uiState.editMode
-            mapViewModel.setEditMode(MapEditMode.SetStart)
-            mapViewModel.onTapCell(newStatus.x, newStatus.y)
-            mapViewModel.setEditMode(oldMode)
+
+        // If position changed (forward/backward), update map
+        if (newStatus.x != current.x || newStatus.y != current.y) {
+            mapViewModel.applyRobotEvent(
+        RobotInboundEvent.RobotPositionEvent(
+                    x = newStatus.x,
+                    y = newStatus.y,
+                    faceDir = newStatus.faceDir
+                )
+            )
         }
+        
+//        // Update map's robot position when status changes
+//        val currentPos = uiState.robotPosition
+//        if (currentPos != null) {
+//            // Check if position or direction changed
+//            val positionChanged = newStatus.x != current.x || newStatus.y != current.y
+//            val directionChanged = newStatus.faceDir != current.faceDir
+//
+//            if (positionChanged) {
+//                // Position changed - update map with new position
+//                // Temporarily switch to SetStart mode to update robot position
+//                val oldMode = uiState.editMode
+//                mapViewModel.setEditMode(MapEditMode.SetStart)
+//                mapViewModel.onTapCell(newStatus.x, newStatus.y)
+//                mapViewModel.setEditMode(oldMode)
+//            } else if (directionChanged) {
+//                // Only direction changed - update robot position with new direction
+//                // Temporarily switch to SetStart mode to update robot direction
+//                val oldMode = uiState.editMode
+//                mapViewModel.setEditMode(MapEditMode.SetStart)
+//                mapViewModel.onTapCell(newStatus.x, newStatus.y)
+//                mapViewModel.setEditMode(oldMode)
+//            }
+//        } else if (newStatus.x != current.x || newStatus.y != current.y) {
+//            // No robot position yet, but we're moving - set initial position
+//            val oldMode = uiState.editMode
+//            mapViewModel.setEditMode(MapEditMode.SetStart)
+//            mapViewModel.onTapCell(newStatus.x, newStatus.y)
+//            mapViewModel.setEditMode(oldMode)
+//        }
     }
 
     // Collect the Retry value
@@ -409,7 +469,9 @@ fun MappingHomeScreen(
                         },
                         // To Open Message Log
                         onOpenLog = { showLogSheet = true },
-                        onDirection = handleDirection
+                        onDirection = handleDirection,
+                        bluetoothStatus = bluetoothStatus,
+                        isLandscape = isLandscape,
                     )
                 }
             } else {
@@ -561,7 +623,9 @@ fun MappingHomeScreen(
                         },
                         // To open messages
                         onOpenLog = { showLogSheet = true },
-                        onDirection = handleDirection
+                        onDirection = handleDirection,
+                        bluetoothStatus = bluetoothStatus,
+                        isLandscape = isLandscape,
                     )
                 }
             }
