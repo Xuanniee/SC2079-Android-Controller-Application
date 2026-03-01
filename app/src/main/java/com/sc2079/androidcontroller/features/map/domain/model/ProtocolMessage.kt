@@ -1,5 +1,6 @@
 package com.sc2079.androidcontroller.features.map.domain.model
 
+import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 
 sealed class ProtocolMessage {
@@ -27,7 +28,8 @@ sealed class ProtocolMessage {
 
     data class ObstacleList(
         val retryEnabled: Boolean,
-        val obstacles: List<ObstacleItem>
+        val obstacles: List<ObstacleItem>,
+        val robotStatus: RobotStatus
     ) : ProtocolMessage() {
         data class ObstacleItem(
             val obstacleId: Int,

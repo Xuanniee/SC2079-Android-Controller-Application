@@ -1,5 +1,7 @@
 package com.sc2079.androidcontroller.features.map.presentation
 
+import android.util.Log
+import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.features.map.domain.model.ProtocolMessage
 import com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
@@ -229,33 +231,63 @@ object RobotProtocolParser {
 
     /**
      * Function to parse string to be formatted into a protocol message to be sent to the RPI
+     *
+     * Message FOrmat supposed to look like:
+     * STATUS, OBSTACLE LIST, retryFlag, Robot Status, Number of Obstacles, Obstacle Payload
      */
     private fun parseObstacleList(payload: String): ProtocolMessage? {
         val trimmed = payload.trim()
+        if (trimmed.isEmpty()) {
+            return null
+        }
 
-        // Split only first 2 commas: retry, count, rest
-        val parts = trimmed.split(",", limit = 3).map { it.trim() }
-        if (parts.size < 2) return null
+        Log.d("RobotProtocol", "Trimmed Message: ${trimmed}")
+
+        // Split only first 2 commas: retry, robotstatus, object count, object payload
+        val parts = trimmed.split(",", limit = 4).map { it.trim() }
+        if (parts.size < 3) {
+            return null
+        }
 
         // Parse retry boolean
         val retry = parts[0].toBooleanStrictOrNull() ?: return null
 
+        // Robot status segment: "x; y; faceDir"
+        val robotFields = parts[1].split(';').map { it.trim() }.filter { it.isNotEmpty() }
+        if (robotFields.size != 3) return null
+
+        val robotX = parseIntSafe(robotFields[0]) ?: return null
+        val robotY = parseIntSafe(robotFields[1]) ?: return null
+        val robotFace = parseFaceSafe(robotFields[2]) ?: return null
+
+        val robotStatus = RobotStatus(
+            x = robotX,
+            y = robotY,
+            faceDir = robotFace,
+            statusMessage = "",
+            isMoving = false
+        )
+
+
         // Parse obstacle count
-        val n = parseIntSafe(parts[1]) ?: return null
+        val n = parseIntSafe(parts[2]) ?: return null
 
         // No obstacles
         if (n == 0) {
             return ProtocolMessage.ObstacleList(
                 retryEnabled = retry,
-                obstacles = emptyList()
+                obstacles = emptyList(),
+                robotStatus = robotStatus,
             )
         }
 
-        if (parts.size < 3) return null
-        val rest = parts[2]
+        // Need payload if n > 0
+        if (parts.size < 4) return null
+//        val objectPayload = parts.drop(3).joinToString(",").trim()
+        val objectPayload = parts[3].trim()
 
         // Parse obstacle payload
-        val itemsRaw = rest.split("|")
+        val itemsRaw = objectPayload.split("|")
             .map { it.trim() }
             .filter { it.isNotEmpty() }
 
@@ -275,7 +307,8 @@ object RobotProtocolParser {
 
         return ProtocolMessage.ObstacleList(
             retryEnabled = retry,
-            obstacles = items
+            obstacles = items,
+            robotStatus = robotStatus,
         )
     }
 

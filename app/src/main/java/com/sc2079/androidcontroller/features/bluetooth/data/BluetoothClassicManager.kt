@@ -76,7 +76,7 @@ class BluetoothClassicManager(
     private var inputStream: InputStream? = null
     // Writes to this stream at Robot for them to receive
     private var outputStream: OutputStream? = null
-    // Coroutine Jobs to check inputStream for messagfes
+    // Coroutine Jobs to check inputStream for messages
     private var readerJob: Job? = null
     // Coroutine job as server to wait for robot to connect
     private var acceptBluetoothJob: Job? = null

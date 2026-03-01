@@ -1,5 +1,7 @@
 package com.sc2079.androidcontroller.features.map.presentation
 
+import android.util.Log
+import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
 import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 import com.sc2079.androidcontroller.features.map.domain.model.MapConstants
 import com.sc2079.androidcontroller.features.map.domain.model.DefaultMapConstants
@@ -7,11 +9,12 @@ import com.sc2079.androidcontroller.features.map.domain.model.Obstacle
 import com.sc2079.androidcontroller.features.map.domain.model.RobotPosition
 
 object RobotProtocol {
+    private const val TAG = "RobotProtocol"
     private const val mapUnit: Int = 1
     private val mapConstants: MapConstants = DefaultMapConstants
     private val MAP_SIZE: Int
         get() = mapConstants.mapSize
-    
+
     /**
      * Helper function to validate coordinates are within map bounds
      * Valid coordinates are 0 to (MAP_SIZE - 1) for both x and y
@@ -51,16 +54,32 @@ object RobotProtocol {
 
     /**
      * Sync with the AI where all the obstacles are
-     * STATUS, OBSTACLE LIST, RETRY Boolean (whether we are using a less aggro algo, number of obstacles,
-     * payload of obstacles)
+     * STATUS, OBSTACLE LIST, RETRY Boolean (whether we are using a less aggro algo,
+     * Robot X Coordinate, Robot Y Coordiante, number of obstacles, payload of obstacles)
      */
-    fun sendObstacleList(obstacles: List<Obstacle>, retryEnabled: Boolean): String {
-        if (obstacles.isEmpty()) return "STATUS, OBSTACLE LIST, $retryEnabled, 0"
+    fun sendObstacleList(obstacles: List<Obstacle>, retryEnabled: Boolean, robotStatus: RobotStatus?): String {
+        // Ensure the Robot Value defaults to 1,1 Face North if nothing is provided
+        val robotStatusX = robotStatus?.x ?: 1
+        val robotStatusY = robotStatus?.y ?: 1
+        val robotStatusFaceDir = robotStatus?.faceDir ?: FaceDir.NORTH
+
+
+        if (obstacles.isEmpty()) {
+            return "STATUS, OBSTACLE LIST, $retryEnabled, ${robotStatusX}; ${robotStatusY}; ${robotStatusFaceDir}, 0"
+        }
 
         val payload = obstacles.joinToString(" | ") { o ->
             "${o.obstacleId}; ${o.x * mapUnit}; ${o.y * mapUnit}; ${o.faceDir.name}"
         }
-        return "STATUS, OBSTACLE LIST, $retryEnabled, ${obstacles.size}, $payload"
+
+        // Robot Position is delimited by semicolons
+        Log.d(TAG, "sendObstacleList() retryEnabled=$retryEnabled obstacles=${obstacles.size}")
+        Log.d(TAG, "RobotStatus raw=$robotStatus -> x=$robotStatusX y=$robotStatusY dir=$robotStatusFaceDir")
+        Log.d(TAG, "payload=$payload")
+
+        val msg = "STATUS, OBSTACLE LIST, $retryEnabled, ${robotStatusX}; ${robotStatusY}; ${robotStatusFaceDir}, ${obstacles.size}, $payload"
+        Log.d(TAG, "Sending msg=$msg")
+        return msg
     }
 
     /**

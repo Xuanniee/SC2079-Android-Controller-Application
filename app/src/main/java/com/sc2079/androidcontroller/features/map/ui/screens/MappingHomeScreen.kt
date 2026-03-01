@@ -230,7 +230,7 @@ fun MappingHomeScreen(
         if (pendingSyncAfterLoad) {
             // TODO I think better to not send clear to robot first ig
             // bluetoothViewModel.sendMessage(RobotProtocol.clear())
-            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(uiState.obstacles, retryEnabled))
+            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(uiState.obstacles, retryEnabled, robotStatus))
             pendingSyncAfterLoad = false
         }
     }
@@ -333,7 +333,8 @@ fun MappingHomeScreen(
                                     bluetoothViewModel.sendMessage(
                                         RobotProtocol.sendObstacleList(
                                             emptyList(),
-                                            retryEnabled
+                                            retryEnabled,
+                                            robotStatus
                                         )
                                     )
                                 },
@@ -443,7 +444,11 @@ fun MappingHomeScreen(
                             mapViewModel.resetAll()
                             bluetoothViewModel.sendMessage(RobotProtocol.clear())
                             // TODO Need decide if we want to send an empty list when we reset the obstacle
-                            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(emptyList(), retryEnabled))
+                            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(
+                                emptyList(),
+                                retryEnabled,
+                                robotStatus
+                            ))
                         },
                         onSave = { showSaveDialog = true },
                         onLoad = {
@@ -464,7 +469,11 @@ fun MappingHomeScreen(
 //                                RobotProtocol.clear()
 //                            )
                             bluetoothViewModel.sendMessage(
-                                RobotProtocol.sendObstacleList(uiState.obstacles, retryEnabled)
+                                RobotProtocol.sendObstacleList(
+                                    uiState.obstacles,
+                                    retryEnabled,
+                                    robotStatus
+                                )
                             )
                         },
                         // To Open Message Log
@@ -500,7 +509,8 @@ fun MappingHomeScreen(
                                 bluetoothViewModel.sendMessage(
                                     RobotProtocol.sendObstacleList(
                                         emptyList(),
-                                        retryEnabled
+                                        retryEnabled,
+                                        robotStatus
                                     )
                                 )
                             },
@@ -597,7 +607,11 @@ fun MappingHomeScreen(
                             bluetoothViewModel.sendMessage(RobotProtocol.clear())
                             // TODO Need decide if we want to send an empty list when we reset the obstacle
                             bluetoothViewModel.sendMessage(
-                                RobotProtocol.sendObstacleList(emptyList(), retryEnabled)
+                                RobotProtocol.sendObstacleList(
+                                    emptyList(),
+                                    retryEnabled,
+                                    robotStatus
+                                )
                             )
                         },
                         onSave = { showSaveDialog = true },
@@ -618,7 +632,11 @@ fun MappingHomeScreen(
 //                                RobotProtocol.clear()
 //                            )
                             bluetoothViewModel.sendMessage(
-                                RobotProtocol.sendObstacleList(uiState.obstacles, retryEnabled)
+                                RobotProtocol.sendObstacleList(
+                                    uiState.obstacles,
+                                    retryEnabled,
+                                    robotStatus
+                                )
                             )
                         },
                         // To open messages
