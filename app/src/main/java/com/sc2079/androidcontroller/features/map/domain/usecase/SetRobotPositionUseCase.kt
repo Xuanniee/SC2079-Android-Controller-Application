@@ -10,7 +10,7 @@ import com.sc2079.androidcontroller.features.map.domain.model.RobotPosition
 class SetRobotPositionUseCase {
     operator fun invoke(mapSnapshot: MapSnapshot, x: Int, y: Int, faceDir: FaceDir): MapSnapshot {
         // Check if OOB
-        if (!inBounds(x, y)) {
+        if (!inBoundsCenterFor3x3(x, y)) {
             return mapSnapshot
         }
 
@@ -21,6 +21,16 @@ class SetRobotPositionUseCase {
     }
 
     // Helper function to check if the coordinates are within the bounds of the map
+    private fun inBoundsCenterFor3x3(x: Int, y: Int): Boolean {
+        val min = 0
+        val max = 19
+        val half = 1 // 3x3 => radius 1 around center
+
+        return (x - half) >= min &&
+                (x + half) <= max &&
+                (y - half) >= min &&
+                (y + half) <= max
+    }
     private fun inBounds(x: Int, y: Int): Boolean {
         if (x < 0) {
             return false

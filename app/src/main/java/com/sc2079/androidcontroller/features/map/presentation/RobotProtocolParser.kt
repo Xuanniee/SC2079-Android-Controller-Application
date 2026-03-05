@@ -42,6 +42,10 @@ object RobotProtocolParser {
         if (msg.equals("CLEAR", ignoreCase = true)) {
             return ProtocolMessage.Clear
         }
+
+        // Check if it is a DPAD COmmand to control robot
+        parseControlCommand(msg)?.let { return it }
+
         // Ensure all messages start with STATUS
         if (!msg.startsWith("STATUS", ignoreCase = true)) {
             return null
@@ -82,6 +86,69 @@ object RobotProtocolParser {
 
         // Reject everything else e.g. "hello world"
         return null
+    }
+
+    /**
+     * Edge Case for Parsing String that the Robot will take for movement
+     */
+    private fun parseControlCommand(msg: String): ProtocolMessage.MotionCommand? {
+        if (!msg.startsWith("CONTROL", ignoreCase = true)) return null
+
+        // Accept both:
+        // "CONTROL, ['center,0,forward,10']"
+        // "CONTROL - ['center,0,forward,10']"
+        val rest = when {
+            msg.contains("CONTROL -", ignoreCase = true) ->
+                msg.substringAfter("CONTROL -", "").trim()
+            msg.contains("CONTROL,", ignoreCase = true) ->
+                msg.substringAfter("CONTROL,", "").trim()
+            else -> return null
+        }
+
+        // rest should now be like: ['center,0,forward,10']  OR  [center,0,forward,10]
+        var payload = rest
+
+        // unwrap outer brackets
+        if (payload.startsWith("[")) payload = payload.removePrefix("[").trim()
+        if (payload.endsWith("]")) payload = payload.removeSuffix("]").trim()
+
+        if ((payload.startsWith("'") && payload.endsWith("'")) ||
+            (payload.startsWith("\"") && payload.endsWith("\""))
+        ) {
+            payload = payload.substring(1, payload.length - 1).trim()
+        }
+
+        return parseMotionCommand(payload)
+    }
+
+    private fun parseMotionCommand(msg: String): ProtocolMessage.MotionCommand? {
+        val cleaned = msg.trim()
+            .removePrefix("[")
+            .removeSuffix("]")
+            .trim()
+
+        val parts = cleaned.split(",").map { it.trim() }
+        if (parts.size != 4) return null
+
+        val steer = parts[0].lowercase()
+        val angle = parts[1].toIntOrNull() ?: return null
+        val motion = parts[2].lowercase()
+        val dist = parts[3].toIntOrNull() ?: return null
+
+        if (steer !in setOf("center", "left", "right")) return null
+        if (motion !in setOf("forward", "reverse")) return null
+
+        return when (steer) {
+            "center" -> {
+                if (angle != 0 || dist != 10) return null
+                ProtocolMessage.MotionCommand(steer, angle, motion, dist)
+            }
+            "left", "right" -> {
+                if (angle != 90 || dist != 0 || motion != "forward") return null
+                ProtocolMessage.MotionCommand(steer, angle, motion, dist)
+            }
+            else -> null
+        }
     }
 
     /**

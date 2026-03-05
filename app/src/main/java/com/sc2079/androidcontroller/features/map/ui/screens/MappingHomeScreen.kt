@@ -32,6 +32,7 @@ import com.sc2079.androidcontroller.features.controller.domain.usecase.MoveRobot
 import com.sc2079.androidcontroller.features.controller.domain.usecase.RobotControlBluetoothModule
 import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
 import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
+import com.sc2079.androidcontroller.features.controller.domain.ControlState
 import com.sc2079.androidcontroller.features.controller.domain.model.BluetoothStatus
 import com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
 
@@ -74,14 +75,15 @@ fun MappingHomeScreen(
 
     // Update robotStatus when map's robot position changes
     LaunchedEffect(uiState.robotPosition) {
-        uiState.robotPosition?.let { robotPos ->
-            robotStatus = RobotStatus.fromPosition(robotPos.x, robotPos.y, robotPos.faceDir)
+        if (robotStatus == null) {
+            uiState.robotPosition?.let { robotPos ->
+                robotStatus = RobotStatus.fromPosition(robotPos.x, robotPos.y, robotPos.faceDir)
+            }
         }
     }
 
     // Handler for direction button presses (DPad)
     val handleDirection: (Direction) -> Unit = { direction ->
-        // Determine the current position of the Robot
         val current = robotStatus
             ?: RobotStatus.fromPosition(
                 uiState.robotPosition?.x ?: 0,
@@ -89,65 +91,93 @@ fun MappingHomeScreen(
                 uiState.robotPosition?.faceDir ?: FaceDir.NORTH
             )
 
-        // Determine the new state of the robot
         val newStatus = when (direction) {
-            // Move forward
-            Direction.NORTH -> {
-                robotControlModule.moveForward(current)
-            }
-
-            // Move backward
-            Direction.SOUTH -> {
-                robotControlModule.moveBackward(current)
-            }
-
-            // Left and Right is to rotate the Robot
-            Direction.WEST -> {
-                // Rotate Left
-                val rotated = robotControlModule.rotateLeft(current)
-
-                // Immediately update map direction after rotation
-                mapViewModel.applyRobotEvent(
-                    com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
-                        .RobotPositionEvent(
-                            x = rotated.x,
-                            y = rotated.y,
-                            faceDir = rotated.faceDir
-                        )
-                )
-
-                // Return the res of Rotation
-                rotated
-            }
-
-            // Same but rotate right
-            Direction.EAST -> {
-                val rotated = robotControlModule.rotateRight(current)
-                mapViewModel.applyRobotEvent(
-                    com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
-                        .RobotPositionEvent(
-                            x = rotated.x,
-                            y = rotated.y,
-                            faceDir = rotated.faceDir
-                        )
-                )
-                rotated
-            }
+            Direction.NORTH -> robotControlModule.moveForward(current)
+            Direction.SOUTH -> robotControlModule.moveBackward(current)
+            Direction.WEST  -> robotControlModule.rotateLeft(current)
+            Direction.EAST  -> robotControlModule.rotateRight(current)
         }
 
-        // Update the robotStatus with the new Status
+        // Always update local state
         robotStatus = newStatus
 
-        // If position changed (forward/backward), update map
-        if (newStatus.x != current.x || newStatus.y != current.y) {
-            mapViewModel.applyRobotEvent(
-        RobotInboundEvent.RobotPositionEvent(
-                    x = newStatus.x,
-                    y = newStatus.y,
-                    faceDir = newStatus.faceDir
-                )
+        // Always update UI state (so canvas moves even when BT connected)
+        mapViewModel.applyRobotEvent(
+            RobotInboundEvent.RobotPositionEvent(
+                x = newStatus.x,
+                y = newStatus.y,
+                faceDir = newStatus.faceDir
             )
-        }
+        )
+    }
+//    val handleDirection: (Direction) -> Unit = { direction ->
+//        // Determine the current position of the Robot
+//        val current = robotStatus
+//            ?: RobotStatus.fromPosition(
+//                uiState.robotPosition?.x ?: 0,
+//                uiState.robotPosition?.y ?: 0,
+//                uiState.robotPosition?.faceDir ?: FaceDir.NORTH
+//            )
+//
+//        // Determine the new state of the robot
+//        val newStatus = when (direction) {
+//            // Move forward
+//            Direction.NORTH -> {
+//                robotControlModule.moveForward(current)
+//            }
+//
+//            // Move backward
+//            Direction.SOUTH -> {
+//                robotControlModule.moveBackward(current)
+//            }
+//
+//            // Left and Right is to rotate the Robot
+//            Direction.WEST -> {
+//                // Rotate Left
+//                val rotated = robotControlModule.rotateLeft(current)
+//
+//                // Immediately update map direction after rotation
+//                mapViewModel.applyRobotEvent(
+//                    com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
+//                        .RobotPositionEvent(
+//                            x = rotated.x,
+//                            y = rotated.y,
+//                            faceDir = rotated.faceDir
+//                        )
+//                )
+//
+//                // Return the res of Rotation
+//                rotated
+//            }
+//
+//            // Same but rotate right
+//            Direction.EAST -> {
+//                val rotated = robotControlModule.rotateRight(current)
+//                mapViewModel.applyRobotEvent(
+//                    com.sc2079.androidcontroller.features.map.domain.model.RobotInboundEvent
+//                        .RobotPositionEvent(
+//                            x = rotated.x,
+//                            y = rotated.y,
+//                            faceDir = rotated.faceDir
+//                        )
+//                )
+//                rotated
+//            }
+//        }
+//
+//        // Update the robotStatus with the new Status
+//        robotStatus = newStatus
+//
+//        // If position changed (forward/backward), update map
+//        if (newStatus.x != current.x || newStatus.y != current.y) {
+//            mapViewModel.applyRobotEvent(
+//        RobotInboundEvent.RobotPositionEvent(
+//                    x = newStatus.x,
+//                    y = newStatus.y,
+//                    faceDir = newStatus.faceDir
+//                )
+//            )
+//        }
         
 //        // Update map's robot position when status changes
 //        val currentPos = uiState.robotPosition
@@ -178,7 +208,7 @@ fun MappingHomeScreen(
 //            mapViewModel.onTapCell(newStatus.x, newStatus.y)
 //            mapViewModel.setEditMode(oldMode)
 //        }
-    }
+//    }
 
     // Collect the Retry value
     val retryEnabled by mapViewModel.retryEnabled.collectAsState()
@@ -298,191 +328,356 @@ fun MappingHomeScreen(
             val isLandscape = maxWidth > maxHeight
 
             if (isLandscape) {
-                // --- Tablet / Landscape: Left map, right panel (like your screenshot)
+                // --- Tablet / Landscape:
+                // Left map, right panel (For Right Handed Controls)
+                // right map, left panel (For Right Handed Controls)
                 Row(
                     modifier = Modifier
                         .fillMaxSize(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // LEFT: Map surface
-                    Card(
-                        modifier = Modifier
-                            .weight(0.7f)
-                            .fillMaxHeight(),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                    ) {
-                        Box(
+                    if (ControlState.isRightHanded) {
+                        // Default - Right Hand Controls
+                        // LEFT: Map surface
+                        Card(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(14.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.40f))
-                                .padding(14.dp),
-                            contentAlignment = Alignment.Center
+                                .weight(0.7f)
+                                .fillMaxHeight(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                         ) {
-                            MappingScreen(
-                                uiState = uiState,
-                                onSetMode = { mapViewModel.setEditMode(it) },
-                                onReset = {
-                                    // Reset the Map with the VM and send Messages to update
-                                    mapViewModel.resetAll()
-                                    bluetoothViewModel.sendMessage(RobotProtocol.clear())
-                                    // TODO Need decide if we want to send an empty list when we reset the obstacle
-                                    bluetoothViewModel.sendMessage(
-                                        RobotProtocol.sendObstacleList(
-                                            emptyList(),
-                                            retryEnabled,
-                                            robotStatus
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(14.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.40f))
+                                    .padding(14.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                MappingScreen(
+                                    uiState = uiState,
+                                    onSetMode = { mapViewModel.setEditMode(it) },
+                                    onReset = {
+                                        // Reset the Map with the VM and send Messages to update
+                                        mapViewModel.resetAll()
+                                        bluetoothViewModel.sendMessage(RobotProtocol.clear())
+                                        // TODO Need decide if we want to send an empty list when we reset the obstacle
+                                        bluetoothViewModel.sendMessage(
+                                            RobotProtocol.sendObstacleList(
+                                                emptyList(),
+                                                retryEnabled,
+                                                robotStatus
+                                            )
                                         )
-                                    )
-                                },
-                                onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
-                                onSaveMap = { mapViewModel.saveCurrentMap(it) },
-                                onLoadMap = { mapViewModel.loadMap(it) },
-                                onDeleteMap = { mapViewModel.deleteMap(it) },
-                                // Placement of a new obstacle
-                                onTapCell = { x, y ->
-                                    // Retrieve the Robot Old Position (if it exists)
-                                    val oldRobotPosition = uiState.robotPosition
-                                    // Retrieve the result of tapping cell
-                                    val added = mapViewModel.onTapCell(x, y)
+                                    },
+                                    onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
+                                    onSaveMap = { mapViewModel.saveCurrentMap(it) },
+                                    onLoadMap = { mapViewModel.loadMap(it) },
+                                    onDeleteMap = { mapViewModel.deleteMap(it) },
+                                    // Placement of a new obstacle
+                                    onTapCell = { x, y ->
+                                        // Retrieve the Robot Old Position (if it exists)
+                                        val oldRobotPosition = uiState.robotPosition
+                                        // Retrieve the result of tapping cell
+                                        val added = mapViewModel.onTapCell(x, y)
 
-//                                    // TEST to ensure msg validation works
-//                                    android.util.Log.d("SENDING MSG", "Should see that we came in")
-//                                    bluetoothViewModel.sendMessage(
-//                                        "TESTING SHOULDNT SEE"
-//                                    )
-
-                                    // Determine which mode of controller we are in
-                                    when (uiState.editMode) {
-                                        // Placing Robot Position
-                                        MapEditMode.SetStart -> {
-                                            // For updating the starting placement of robot, and not moving
-                                            val newRobotPosition =
-                                                mapViewModel.uiState.value.robotPosition
-                                            if (newRobotPosition != null && newRobotPosition != oldRobotPosition) {
-                                                // Send Message for Placing Robot
-                                                bluetoothViewModel.sendMessage(
-                                                    RobotProtocol.placeRobot(newRobotPosition)
-                                                )
-                                            }
-                                        }
-
-                                        // Place Obstacle
-                                        MapEditMode.PlaceObstacle -> {
-                                            // If obstacle was added, send STATUS format message
-                                            if (added != null) {
-                                                val message = RobotProtocol.upsertObstacle(added)
-                                                // Only send if message is not empty (bounds check passed)
-                                                if (message.isNotEmpty()) {
-                                                    bluetoothViewModel.sendMessage(message)
+                                        // Determine which mode of controller we are in
+                                        when (uiState.editMode) {
+                                            // Placing Robot Position
+                                            MapEditMode.SetStart -> {
+                                                // For updating the starting placement of robot, and not moving
+                                                val newRobotPosition =
+                                                    mapViewModel.uiState.value.robotPosition
+                                                if (newRobotPosition != null && newRobotPosition != oldRobotPosition) {
+                                                    // Send Message for Placing Robot
+                                                    bluetoothViewModel.sendMessage(
+                                                        RobotProtocol.placeRobot(newRobotPosition)
+                                                    )
                                                 }
                                             }
-                                        }
 
-                                        // Other Modes dont need to send messages
-                                        else -> Unit
-                                    }
-//                                    if (added != null) {
-//                                        bluetoothViewModel.sendMessage(
-//                                            RobotProtocol.upsertObstacle(added)
-//                                        )
-//                                    }
-                                },
-                                onTapObstacleForFace = { no ->
-                                    if (uiState.editMode == MapEditMode.ChangeObstacleFace) {
-                                        facePickerForObstacle = no
-                                    }
-                                },
-                                onStartDragObstacle = { /* no-op */ },
-                                onDragObstacleToCell = { no, x, y ->
-                                    val moved = mapViewModel.onDragObstacle(no, x, y)
-                                    if (moved != null) {
-                                        val message = RobotProtocol.upsertObstacle(moved)
-                                        // Only send if message is not empty (bounds check passed)
-                                        if (message.isNotEmpty()) {
-                                            bluetoothViewModel.sendMessage(message)
+                                            // Place Obstacle
+                                            MapEditMode.PlaceObstacle -> {
+                                                // If obstacle was added, send STATUS format message
+                                                if (added != null) {
+                                                    val message = RobotProtocol.upsertObstacle(added)
+                                                    // Only send if message is not empty (bounds check passed)
+                                                    if (message.isNotEmpty()) {
+                                                        bluetoothViewModel.sendMessage(message)
+                                                    }
+                                                }
+                                            }
+
+                                            // Other Modes dont need to send messages
+                                            else -> Unit
                                         }
-                                    }
-                                },
-                                onDragOutsideRemove = { no ->
-                                    val removed = mapViewModel.removeObstacleByNo(no)
-                                    if (removed != null) {
-                                        val message = RobotProtocol.removeObstacle(removed)
-                                        // Only send if message is not empty
-                                        if (message.isNotEmpty()) {
-                                            bluetoothViewModel.sendMessage(message)
+                                    },
+                                    onTapObstacleForFace = { no ->
+                                        if (uiState.editMode == MapEditMode.ChangeObstacleFace) {
+                                            facePickerForObstacle = no
                                         }
-                                    }
-                                },
-                                onEndDrag = { /* no-op */ }
-                            )
+                                    },
+                                    onStartDragObstacle = { /* no-op */ },
+                                    onDragObstacleToCell = { no, x, y ->
+                                        val moved = mapViewModel.onDragObstacle(no, x, y)
+                                        if (moved != null) {
+                                            val message = RobotProtocol.upsertObstacle(moved)
+                                            // Only send if message is not empty (bounds check passed)
+                                            if (message.isNotEmpty()) {
+                                                bluetoothViewModel.sendMessage(message)
+                                            }
+                                        }
+                                    },
+                                    onDragOutsideRemove = { no ->
+                                        val removed = mapViewModel.removeObstacleByNo(no)
+                                        if (removed != null) {
+                                            val message = RobotProtocol.removeObstacle(removed)
+                                            // Only send if message is not empty
+                                            if (message.isNotEmpty()) {
+                                                bluetoothViewModel.sendMessage(message)
+                                            }
+                                        }
+                                    },
+                                    onEndDrag = { /* no-op */ }
+                                )
+                            }
                         }
-                    }
 
-                    // RIGHT: Panel
-                    RightPanel(
-                        modifier = Modifier
-                            .widthIn(min = 320.dp, max = 420.dp)
-                            .weight(0.3f)
-                            .fillMaxHeight(),
-                        retryEnabled = retryEnabled,
-                        onRetryChange = {
-                            mapViewModel.setRetryEnabled(it)
-                        },
-                        editMode = uiState.editMode,
-                        savedMaps = uiState.savedMaps,
-                        selectedLoadName = selectedLoadName,
-                        loadExpanded = loadExpanded,
-                        onLoadExpandedChange = { loadExpanded = it },
-                        onPickLoadName = { selectedLoadName = it },
-                        onSetMode = { mapViewModel.setEditMode(it) },
-                        onReset = {
+                        // RIGHT: Panel
+                        RightPanel(
+                            modifier = Modifier
+                                .widthIn(min = 320.dp, max = 420.dp)
+                                .weight(0.3f)
+                                .fillMaxHeight(),
+                            retryEnabled = retryEnabled,
+                            onRetryChange = {
+                                mapViewModel.setRetryEnabled(it)
+                            },
+                            editMode = uiState.editMode,
+                            savedMaps = uiState.savedMaps,
+                            selectedLoadName = selectedLoadName,
+                            loadExpanded = loadExpanded,
+                            onLoadExpandedChange = { loadExpanded = it },
+                            onPickLoadName = { selectedLoadName = it },
+                            onSetMode = { mapViewModel.setEditMode(it) },
+                            onReset = {
 
-                            mapViewModel.resetAll()
-                            bluetoothViewModel.sendMessage(RobotProtocol.clear())
-                            // TODO Need decide if we want to send an empty list when we reset the obstacle
-                            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(
-                                emptyList(),
-                                retryEnabled,
-                                robotStatus
-                            ))
-                        },
-                        onSave = { showSaveDialog = true },
-                        onLoad = {
-                            // Return the name of the loaded map, default if it doesnt exist
-                            val name = if (uiState.savedMaps.isNotEmpty()) selectedLoadName else "default"
+                                mapViewModel.resetAll()
+                                bluetoothViewModel.sendMessage(RobotProtocol.clear())
+                                // TODO Need decide if we want to send an empty list when we reset the obstacle
+                                bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(
+                                    emptyList(),
+                                    retryEnabled,
+                                    robotStatus
+                                ))
+                            },
+                            onSave = { showSaveDialog = true },
+                            onLoad = {
+                                // Return the name of the loaded map, default if it doesnt exist
+                                val name = if (uiState.savedMaps.isNotEmpty()) selectedLoadName else "default"
 
-                            // Ensure we send the obstacle lists only after loading
-                            pendingSyncAfterLoad = true
-                            // loadMap is an async function call so we must wait for uiState.obstacles to update first
-                            mapViewModel.loadMap(name)
-                        },
-                        statusTitle = "Activity Status",
-                        statusSubtitle = statusSubtitle,
-                        // To sync obstacle list by sending it to RPI
-                        onSync = {
-                            // TODO Better to not Always clear first to ensure obstacle is latest
+                                // Ensure we send the obstacle lists only after loading
+                                pendingSyncAfterLoad = true
+                                // loadMap is an async function call so we must wait for uiState.obstacles to update first
+                                mapViewModel.loadMap(name)
+                            },
+                            statusTitle = "Activity Status",
+                            statusSubtitle = statusSubtitle,
+                            // To sync obstacle list by sending it to RPI
+                            onSync = {
+                                // TODO Better to not Always clear first to ensure obstacle is latest
 //                            bluetoothViewModel.sendMessage(
 //                                RobotProtocol.clear()
 //                            )
-                            bluetoothViewModel.sendMessage(
-                                RobotProtocol.sendObstacleList(
-                                    uiState.obstacles,
+                                bluetoothViewModel.sendMessage(
+                                    RobotProtocol.sendObstacleList(
+                                        uiState.obstacles,
+                                        retryEnabled,
+                                        robotStatus
+                                    )
+                                )
+                            },
+                            // To Open Message Log
+                            onOpenLog = { showLogSheet = true },
+                            onDirection = handleDirection,
+                            bluetoothStatus = bluetoothStatus,
+                            isLandscape = isLandscape,
+                            isRightHanded = ControlState.isRightHanded
+                        )
+                    } else {
+                        // Panel on the left for Left Handed Controls
+                        RightPanel(
+                            modifier = Modifier
+                                .widthIn(min = 320.dp, max = 420.dp)
+                                .weight(0.3f)
+                                .fillMaxHeight(),
+                            retryEnabled = retryEnabled,
+                            onRetryChange = {
+                                mapViewModel.setRetryEnabled(it)
+                            },
+                            editMode = uiState.editMode,
+                            savedMaps = uiState.savedMaps,
+                            selectedLoadName = selectedLoadName,
+                            loadExpanded = loadExpanded,
+                            onLoadExpandedChange = { loadExpanded = it },
+                            onPickLoadName = { selectedLoadName = it },
+                            onSetMode = { mapViewModel.setEditMode(it) },
+                            onReset = {
+
+                                mapViewModel.resetAll()
+                                bluetoothViewModel.sendMessage(RobotProtocol.clear())
+                                // TODO Need decide if we want to send an empty list when we reset the obstacle
+                                bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(
+                                    emptyList(),
                                     retryEnabled,
                                     robotStatus
+                                ))
+                            },
+                            onSave = { showSaveDialog = true },
+                            onLoad = {
+                                // Return the name of the loaded map, default if it doesnt exist
+                                val name = if (uiState.savedMaps.isNotEmpty()) selectedLoadName else "default"
+
+                                // Ensure we send the obstacle lists only after loading
+                                pendingSyncAfterLoad = true
+                                // loadMap is an async function call so we must wait for uiState.obstacles to update first
+                                mapViewModel.loadMap(name)
+                            },
+                            statusTitle = "Activity Status",
+                            statusSubtitle = statusSubtitle,
+                            // To sync obstacle list by sending it to RPI
+                            onSync = {
+                                // TODO Better to not Always clear first to ensure obstacle is latest
+//                            bluetoothViewModel.sendMessage(
+//                                RobotProtocol.clear()
+//                            )
+                                bluetoothViewModel.sendMessage(
+                                    RobotProtocol.sendObstacleList(
+                                        uiState.obstacles,
+                                        retryEnabled,
+                                        robotStatus
+                                    )
                                 )
-                            )
-                        },
-                        // To Open Message Log
-                        onOpenLog = { showLogSheet = true },
-                        onDirection = handleDirection,
-                        bluetoothStatus = bluetoothStatus,
-                        isLandscape = isLandscape,
-                    )
-                }
+                            },
+                            // To Open Message Log
+                            onOpenLog = { showLogSheet = true },
+                            onDirection = handleDirection,
+                            bluetoothStatus = bluetoothStatus,
+                            isLandscape = isLandscape,
+                            isRightHanded = ControlState.isRightHanded
+                        )
+
+                        // Right: Map surface
+                        Card(
+                            modifier = Modifier
+                                .weight(0.7f)
+                                .fillMaxHeight(),
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(14.dp)
+                                    .clip(RoundedCornerShape(18.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.40f))
+                                    .padding(14.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                MappingScreen(
+                                    uiState = uiState,
+                                    onSetMode = { mapViewModel.setEditMode(it) },
+                                    onReset = {
+                                        // Reset the Map with the VM and send Messages to update
+                                        mapViewModel.resetAll()
+                                        bluetoothViewModel.sendMessage(RobotProtocol.clear())
+                                        // TODO Need decide if we want to send an empty list when we reset the obstacle
+                                        bluetoothViewModel.sendMessage(
+                                            RobotProtocol.sendObstacleList(
+                                                emptyList(),
+                                                retryEnabled,
+                                                robotStatus
+                                            )
+                                        )
+                                    },
+                                    onSendClear = { bluetoothViewModel.sendMessage(RobotProtocol.clear()) },
+                                    onSaveMap = { mapViewModel.saveCurrentMap(it) },
+                                    onLoadMap = { mapViewModel.loadMap(it) },
+                                    onDeleteMap = { mapViewModel.deleteMap(it) },
+                                    // Placement of a new obstacle
+                                    onTapCell = { x, y ->
+                                        // Retrieve the Robot Old Position (if it exists)
+                                        val oldRobotPosition = uiState.robotPosition
+                                        // Retrieve the result of tapping cell
+                                        val added = mapViewModel.onTapCell(x, y)
+
+                                        // Determine which mode of controller we are in
+                                        when (uiState.editMode) {
+                                            // Placing Robot Position
+                                            MapEditMode.SetStart -> {
+                                                // For updating the starting placement of robot, and not moving
+                                                val newRobotPosition =
+                                                    mapViewModel.uiState.value.robotPosition
+                                                if (newRobotPosition != null && newRobotPosition != oldRobotPosition) {
+                                                    // Send Message for Placing Robot
+                                                    bluetoothViewModel.sendMessage(
+                                                        RobotProtocol.placeRobot(newRobotPosition)
+                                                    )
+                                                }
+                                            }
+
+                                            // Place Obstacle
+                                            MapEditMode.PlaceObstacle -> {
+                                                // If obstacle was added, send STATUS format message
+                                                if (added != null) {
+                                                    val message =
+                                                        RobotProtocol.upsertObstacle(added)
+                                                    // Only send if message is not empty (bounds check passed)
+                                                    if (message.isNotEmpty()) {
+                                                        bluetoothViewModel.sendMessage(message)
+                                                    }
+                                                }
+                                            }
+
+                                            // Other Modes dont need to send messages
+                                            else -> Unit
+                                        }
+                                    },
+                                    onTapObstacleForFace = { no ->
+                                        if (uiState.editMode == MapEditMode.ChangeObstacleFace) {
+                                            facePickerForObstacle = no
+                                        }
+                                    },
+                                    onStartDragObstacle = { /* no-op */ },
+                                    onDragObstacleToCell = { no, x, y ->
+                                        val moved = mapViewModel.onDragObstacle(no, x, y)
+                                        if (moved != null) {
+                                            val message = RobotProtocol.upsertObstacle(moved)
+                                            // Only send if message is not empty (bounds check passed)
+                                            if (message.isNotEmpty()) {
+                                                bluetoothViewModel.sendMessage(message)
+                                            }
+                                        }
+                                    },
+                                    onDragOutsideRemove = { no ->
+                                        val removed = mapViewModel.removeObstacleByNo(no)
+                                        if (removed != null) {
+                                            val message = RobotProtocol.removeObstacle(removed)
+                                            // Only send if message is not empty
+                                            if (message.isNotEmpty()) {
+                                                bluetoothViewModel.sendMessage(message)
+                                            }
+                                        }
+                                    },
+                                    onEndDrag = { /* no-op */ }
+                                )
+                            }
+                        }
+                        }
+                    }
             } else {
                 // --- Portrait fallback: stack map then panel
                 Column(
@@ -644,6 +839,7 @@ fun MappingHomeScreen(
                         onDirection = handleDirection,
                         bluetoothStatus = bluetoothStatus,
                         isLandscape = isLandscape,
+                        isRightHanded = ControlState.isRightHanded
                     )
                 }
             }

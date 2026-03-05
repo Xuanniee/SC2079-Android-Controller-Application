@@ -57,6 +57,8 @@ fun RightPanel(
     onDirection: (Direction) -> Unit,
     // Bool to track if App is in Landscape or Protrait
     isLandscape: Boolean,
+    // For switching RIght Handed Toggle
+    isRightHanded: Boolean,
     modifier: Modifier = Modifier
 ) {
     // Track the Control Panel Tabs, 0 = Map Mode, 1 = Controls
@@ -202,35 +204,35 @@ fun RightPanel(
 
                             Spacer(Modifier.height(10.dp))
 
-                            // 3. Actions row 2 - Load button + Save
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Save Button
-                                FilledTonalButton(
-                                    onClick = onSave,
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Icon(Icons.Default.Save, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Save Map")
-                                }
-
-                                // Load Maps
-                                FilledTonalButton(
-                                    onClick = onLoad,
-                                    enabled = savedMaps.isNotEmpty(),
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Icon(Icons.Default.FolderOpen, contentDescription = null)
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("Load")
-                                }
-                            }
+//                            // 3. Actions row 2 - Load button + Save
+//                            Row(
+//                                modifier = Modifier.fillMaxWidth(),
+//                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+//                                verticalAlignment = Alignment.CenterVertically
+//                            ) {
+//                                // Save Button
+//                                FilledTonalButton(
+//                                    onClick = onSave,
+//                                    modifier = Modifier.weight(1f),
+//                                    shape = RoundedCornerShape(16.dp)
+//                                ) {
+//                                    Icon(Icons.Default.Save, contentDescription = null)
+//                                    Spacer(Modifier.width(8.dp))
+//                                    Text("Save Map")
+//                                }
+//
+//                                // Load Maps
+//                                FilledTonalButton(
+//                                    onClick = onLoad,
+//                                    enabled = savedMaps.isNotEmpty(),
+//                                    modifier = Modifier.weight(1f),
+//                                    shape = RoundedCornerShape(16.dp)
+//                                ) {
+//                                    Icon(Icons.Default.FolderOpen, contentDescription = null)
+//                                    Spacer(Modifier.width(8.dp))
+//                                    Text("Load")
+//                                }
+//                            }
                         }
                     }
                 }
@@ -272,53 +274,107 @@ fun RightPanel(
                                 Spacer(Modifier.height(12.dp))
 
                                 // D-pad (cross layout like screenshot)
-                                DPad(onDirection = onDirection, modifier = Modifier.align(Alignment.CenterHorizontally))
+                                DPad(
+                                    onDirection = onDirection,
+                                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                                )
                             } else {
-                                // Portrait: statuses on the left, DPAD on the right
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                    verticalAlignment = Alignment.Top
-                                ) {
-                                    // Left Status about 60% of screen
-                                    Column(
-                                        modifier = Modifier
-                                            .weight(0.6f),
-                                        verticalArrangement = Arrangement.spacedBy(3.dp)
+                                // Portrait Mode - Right Handled Control
+                                if (isRightHanded) {
+                                    // Default Toggle - So Dpad on the Right
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.Top
                                     ) {
-                                        StatusCard(
-                                            title = stringResource(R.string.bluetooth_status),
-                                            status = bluetoothStatus,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                        StatusRow(
-                                            title = statusTitle,
-                                            subtitle = statusSubtitle,
-                                            onOpenLog = onOpenLog,
-                                        )
-                                    }
-
-                                    // Divider
-                                    VerticalDivider(
-                                        modifier = Modifier
-                                            .fillMaxHeight()
-                                            .padding(horizontal = 12.dp),
-                                        thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                                    )
-
-                                    // RIGHT — 40% Screen for DPAD
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(0.4f),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        DPad(
-                                            onDirection = onDirection,
+                                        // Left Status about 60% of screen
+                                        Column(
                                             modifier = Modifier
-                                                .wrapContentWidth()
-//                                                .align(Alignment.Top)
+                                                .weight(0.6f),
+                                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                                        ) {
+                                            StatusCard(
+                                                title = stringResource(R.string.bluetooth_status),
+                                                status = bluetoothStatus,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            StatusRow(
+                                                title = statusTitle,
+                                                subtitle = statusSubtitle,
+                                                onOpenLog = onOpenLog,
+                                            )
+                                        }
+
+                                        // Divider
+                                        VerticalDivider(
+                                            modifier = Modifier
+                                                .fillMaxHeight()
+                                                .padding(horizontal = 12.dp),
+                                            thickness = 1.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
                                         )
+
+                                        // RIGHT — 40% Screen for DPAD
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(0.4f),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            DPad(
+                                                onDirection = onDirection,
+                                                modifier = Modifier
+                                                    .wrapContentWidth()
+//                                                .align(Alignment.Top)
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    // Portrait Mode - Left Handled Control, Dpad on the left
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        // RIGHT — 40% Screen for DPAD
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(0.4f),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            DPad(
+                                                onDirection = onDirection,
+                                                modifier = Modifier
+                                                    .wrapContentWidth()
+//                                                .align(Alignment.Top)
+                                            )
+                                        }
+
+                                        // Divider
+                                        VerticalDivider(
+                                            modifier = Modifier
+                                                .fillMaxHeight()
+                                                .padding(horizontal = 12.dp),
+                                            thickness = 1.dp,
+                                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                        )
+
+                                        // Left Status about 60% of screen
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(0.6f),
+                                            verticalArrangement = Arrangement.spacedBy(3.dp)
+                                        ) {
+                                            StatusCard(
+                                                title = stringResource(R.string.bluetooth_status),
+                                                status = bluetoothStatus,
+                                                modifier = Modifier.fillMaxWidth()
+                                            )
+                                            StatusRow(
+                                                title = statusTitle,
+                                                subtitle = statusSubtitle,
+                                                onOpenLog = onOpenLog,
+                                            )
+                                        }
                                     }
                                 }
                             }

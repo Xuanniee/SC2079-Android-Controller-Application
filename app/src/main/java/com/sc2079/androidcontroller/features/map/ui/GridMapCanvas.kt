@@ -695,21 +695,50 @@ fun GridMapCanvas(
 
             // ---- Robot ----
             uiState.robotPosition?.let { pose ->
-                val rect = cellRect(pose.x, pose.y, g, grid)
-                drawRect(
-                    color = Color(0xFF80CBC4),
-                    topLeft = rect.topLeft,
-                    size = rect.size
-                )
+                // Draw 3x3 footprint, pose.x/pose.y treated as CENTER cell
+                for (dx in -1..1) {
+                    for (dy in -1..1) {
+                        val x = pose.x + dx
+                        val y = pose.y + dy
+                        // skip out-of-bounds
+                        if (x !in 0 until grid || y !in 0 until grid) continue
 
-                val center = rect.center
-                val d = min(cellW, cellH) * 0.25f
-                val marker = when (pose.faceDir) {
-                    FaceDir.NORTH -> Offset(center.x, center.y - d)
-                    FaceDir.SOUTH -> Offset(center.x, center.y + d)
-                    FaceDir.WEST -> Offset(center.x - d, center.y)
-                    FaceDir.EAST -> Offset(center.x + d, center.y)
+                        val rect = cellRect(x, y, g, grid)
+                        drawRect(
+                            color = Color(0xFF80CBC4),
+                            topLeft = rect.topLeft,
+                            size = rect.size
+                        )
+                    }
                 }
+                // Try to make direction marker one of the 4 directions
+                // pick the marker CELL (one of the 4 adjacent cells)
+                val (mx, my) = when (pose.faceDir) {
+                    FaceDir.NORTH -> pose.x to (pose.y + 1)
+                    FaceDir.SOUTH -> pose.x to (pose.y - 1)
+                    FaceDir.WEST  -> (pose.x - 1) to pose.y
+                    FaceDir.EAST  -> (pose.x + 1) to pose.y
+                }
+
+                // clamp to bounds so you don't crash/draw off-map at edges
+                val clampedMx = mx.coerceIn(0, grid - 1)
+                val clampedMy = my.coerceIn(0, grid - 1)
+
+                // marker is the CENTER of that adjacent cell
+                val markerRect = cellRect(clampedMx, clampedMy, g, grid)
+                val marker = markerRect.center
+
+                // OLDDDDDD    direction marker should be based on CENTER cell
+//                val centerRect = cellRect(pose.x, pose.y, g, grid)
+//                val center = centerRect.center
+//                val d = min(cellW, cellH) * 0.25f
+//
+//                val marker = when (pose.faceDir) {
+//                    FaceDir.NORTH -> Offset(center.x, center.y - d)
+//                    FaceDir.SOUTH -> Offset(center.x, center.y + d)
+//                    FaceDir.WEST  -> Offset(center.x - d, center.y)
+//                    FaceDir.EAST  -> Offset(center.x + d, center.y)
+//                }
 
                 drawCircle(
                     color = Color(0xFF004D40),
@@ -717,6 +746,30 @@ fun GridMapCanvas(
                     center = marker
                 )
             }
+//           OLDDDD // ---- Robot ----
+//            uiState.robotPosition?.let { pose ->
+//                val rect = cellRect(pose.x, pose.y, g, grid)
+//                drawRect(
+//                    color = Color(0xFF80CBC4),
+//                    topLeft = rect.topLeft,
+//                    size = rect.size
+//                )
+//
+//                val center = rect.center
+//                val d = min(cellW, cellH) * 0.25f
+//                val marker = when (pose.faceDir) {
+//                    FaceDir.NORTH -> Offset(center.x, center.y - d)
+//                    FaceDir.SOUTH -> Offset(center.x, center.y + d)
+//                    FaceDir.WEST -> Offset(center.x - d, center.y)
+//                    FaceDir.EAST -> Offset(center.x + d, center.y)
+//                }
+//
+//                drawCircle(
+//                    color = Color(0xFF004D40),
+//                    radius = min(cellW, cellH) * 0.08f,
+//                    center = marker
+//                )
+//            }
         }
 
         // ---- Border ----

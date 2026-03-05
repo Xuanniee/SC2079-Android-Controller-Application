@@ -272,19 +272,21 @@ fun AppScaffold(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-//                    Text(
-//                        text = stringResource(R.string.nav_control),
-//                        style = MaterialTheme.typography.labelMedium,
-//                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-//                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp)
-//                    )
-//
-//                    // Right-handed control toggle
-//                    RightHandedControlToggle(
-//                        isRightHanded = ControlState.isRightHanded,
-//                        onToggleChange = { ControlState.isRightHanded = it },
-//                        modifier = Modifier.padding(horizontal = 28.dp)
-//                    )
+                    Text(
+                        text = stringResource(R.string.nav_control),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp)
+                    )
+
+                    // Right-handed control toggle
+                    RightHandedControlToggle(
+                        isRightHanded = ControlState.isRightHanded,
+                        onToggleChange = {
+                            ControlState.isRightHanded = it
+                        },
+                        modifier = Modifier.padding(horizontal = 28.dp)
+                    )
                     
                     Spacer(modifier = Modifier.height(24.dp))
                 }

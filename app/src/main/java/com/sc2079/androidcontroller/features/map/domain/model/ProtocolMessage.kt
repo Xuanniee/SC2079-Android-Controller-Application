@@ -6,6 +6,14 @@ import com.sc2079.androidcontroller.features.map.domain.model.FaceDir
 sealed class ProtocolMessage {
     data object Clear : ProtocolMessage()
 
+    // For controlling the robot with DPad
+    data class MotionCommand(
+        val steer: String,      // "center" | "left" | "right"
+        val angle: Int,         // 0 or 90
+        val motion: String,     // "forward" | "reverse"
+        val distance: Int       // 0 or 10
+    ) : ProtocolMessage()
+
     // Obstacles
     data class ObstaclePlacement(
         val obstacleId: Int,

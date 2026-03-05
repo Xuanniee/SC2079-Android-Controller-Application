@@ -1,5 +1,6 @@
 package com.sc2079.androidcontroller.features.controller.domain.usecase
 
+import android.util.Log
 import com.sc2079.androidcontroller.features.bluetooth.domain.BluetoothConnState
 import com.sc2079.androidcontroller.features.bluetooth.presentation.BluetoothViewModel
 import com.sc2079.androidcontroller.features.controller.domain.model.RobotStatus
@@ -21,6 +22,9 @@ class RobotControlBluetoothModule(
     private val moveRobotUseCase: MoveRobotUseCase,
     private val bluetoothViewModel: BluetoothViewModel
 ) {
+    private companion object {
+        const val TAG = "RobotControlBT"
+    }
     // Track if robot was just rotated - reset after next up/down press
     private var wasJustRotated: Boolean = false
     /**
@@ -115,7 +119,7 @@ class RobotControlBluetoothModule(
         val newStatus = moveRobotUseCase.moveAbsolute(current, "down")
         
         // Send Bluetooth message if position changed and connected
-        sendMovementCommandIfNeeded(current, newStatus)
+        sendBackwardMovementCommandIfNeeded(current, newStatus)
         
         return newStatus
     }
@@ -130,7 +134,7 @@ class RobotControlBluetoothModule(
         val newStatus = moveRobotUseCase.moveAbsolute(current, "left")
         
         // Send Bluetooth message if position changed and connected
-        sendMovementCommandIfNeeded(current, newStatus)
+        sendRotationCommandIfNeeded(newStatus, isLeftRotation = true)
         
         return newStatus
     }
@@ -145,8 +149,8 @@ class RobotControlBluetoothModule(
         val newStatus = moveRobotUseCase.moveAbsolute(current, "right")
         
         // Send Bluetooth message if position changed and connected
-        sendMovementCommandIfNeeded(current, newStatus)
-        
+        sendRotationCommandIfNeeded(newStatus, isLeftRotation = false)
+
         return newStatus
     }
     
@@ -155,9 +159,16 @@ class RobotControlBluetoothModule(
      * @param message The string message to send
      */
     fun sendCommand(message: String) {
+        Log.e(TAG, "sendCommand() CALLED -> \"$message\"")
         val bluetoothUiState = bluetoothViewModel.bluetoothUiState.value
-        if (bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected) {
-            bluetoothViewModel.sendMessage(message)
+        val connected = bluetoothUiState.bluetoothConnState is BluetoothConnState.Connected
+
+        Log.e(TAG, "BT connected? $connected state=${bluetoothUiState.bluetoothConnState}")
+        if (connected) {
+            bluetoothViewModel.sendMessage(message.trimEnd() + "\r\n")
+            Log.e(TAG, "sendMessage() invoked")
+        } else {
+            Log.e(TAG, "NOT sending because not connected")
         }
     }
     
@@ -173,7 +184,7 @@ class RobotControlBluetoothModule(
         val message = "TEST_1, PWM, $pwmPercent"
         sendCommand(message)
     }
-    
+
     /**
      * Example: Add more test commands here
      * fun test2(param: String) {
@@ -233,10 +244,12 @@ class RobotControlBluetoothModule(
     private fun sendMovementCommandIfNeeded(oldStatus: RobotStatus, newStatus: RobotStatus) {
         // Only send if position actually changed and Bluetooth is connected
         val positionChanged = oldStatus.x != newStatus.x || oldStatus.y != newStatus.y
-        
+        Log.e("RobotControlBT", "move cmd? positionChanged=$positionChanged btConnected=${isBluetoothConnected()} old=$oldStatus new=$newStatus")
+
         if (positionChanged && isBluetoothConnected()) {
             // Up arrow always sends "NORTH" regardless of robot's facing direction
-            sendCommand("NORTH")
+            // 14.5 units is approximately 100cm
+            sendCommand("CONTROL - ['center,0,forward,10']")
             // Reset rotation flag after sending movement command
             wasJustRotated = false
         }
@@ -251,10 +264,11 @@ class RobotControlBluetoothModule(
     private fun sendBackwardMovementCommandIfNeeded(oldStatus: RobotStatus, newStatus: RobotStatus) {
         // Only send if position actually changed and Bluetooth is connected
         val positionChanged = oldStatus.x != newStatus.x || oldStatus.y != newStatus.y
-        
+        Log.e("RobotControlBT", "back cmd? positionChanged=$positionChanged btConnected=${isBluetoothConnected()} old=$oldStatus new=$newStatus")
+
         if (positionChanged && isBluetoothConnected()) {
             // Down arrow always sends "SOUTH" regardless of robot's facing direction
-            sendCommand("SOUTH")
+            sendCommand("CONTROL - ['center,0,reverse,10']")
             // Reset rotation flag after sending movement command
             wasJustRotated = false
         }
@@ -267,14 +281,22 @@ class RobotControlBluetoothModule(
      * @param isLeftRotation True if left rotation, false if right rotation
      */
     private fun sendRotationCommandIfNeeded(newStatus: RobotStatus, isLeftRotation: Boolean) {
+        val cmd = if (isLeftRotation) "CONTROL - ['left,90,forward,0']" else "CONTROL - ['right,90,forward,0']"
+            Log.e("RobotControlBT", "turn cmd? cmd=$cmd btConnected=${isBluetoothConnected()} new=$newStatus")
+
         if (isBluetoothConnected()) {
-            // Use AMD TOOL protocol for rotations
-            val directionString = if (isLeftRotation) {
-                "WEST"  // Left rotation → WEST
-            } else {
-                "EAST"  // Right rotation → EAST
-            }
-            sendCommand(directionString)
+            sendCommand(cmd)
         }
+//        if (isBluetoothConnected()) {
+//            // Use AMD TOOL protocol for rotations
+//            val directionString = if (isLeftRotation) {
+//                "left,90,forward,0"
+////                "WEST"  // Left rotation → WEST
+//            } else {
+//                "right,90,forward,0"
+////                "EAST"  // Right rotation → EAST
+//            }
+//            sendCommand(directionString)
+//        }
     }
 }
