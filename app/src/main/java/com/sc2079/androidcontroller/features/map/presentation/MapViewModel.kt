@@ -198,32 +198,36 @@ class MapViewModel(
 //    }
 
     fun saveCurrentMap(name: String) {
-        viewModelScope.launch {
-            mapRepository.saveMapSnapshot(name.trim(), mapSnapshot)
-            refreshSavedMaps()
-        }
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return
+
+        mapRepository.saveMapSnapshot(trimmedName, mapSnapshot)
+        refreshSavedMaps()
     }
 
     fun loadMap(name: String) {
-        viewModelScope.launch {
-            val loaded = mapRepository.loadMapSnapshot(name) ?: return@launch
-            mapSnapshot = loaded
-            publish()
-        }
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return
+
+        val loaded = mapRepository.loadMapSnapshot(trimmedName) ?: return
+        mapSnapshot = loaded
+
+        _uiState.update { it.copy(robotStatus = "") }
+        publish()
+        refreshSavedMaps()
     }
 
     fun deleteMap(name: String) {
-        viewModelScope.launch {
-            mapRepository.deleteMapSnapshot(name)
-            refreshSavedMaps()
-        }
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return
+
+        mapRepository.deleteMapSnapshot(trimmedName)
+        refreshSavedMaps()
     }
 
     private fun refreshSavedMaps() {
-        viewModelScope.launch {
-            val names = mapRepository.listMapSnapshots()
-            _uiState.update { it.copy(savedMaps = names) }
-        }
+        val names = mapRepository.listMapSnapshots()
+        _uiState.update { it.copy(savedMaps = names) }
     }
 
     private fun publish() {

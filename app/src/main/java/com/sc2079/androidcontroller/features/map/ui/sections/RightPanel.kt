@@ -40,10 +40,10 @@ fun RightPanel(
     onRetryChange: (Boolean) -> Unit,
     editMode: MapEditMode,
     savedMaps: List<String>,
-    selectedLoadName: String,
-    loadExpanded: Boolean,
-    onLoadExpandedChange: (Boolean) -> Unit,
-    onPickLoadName: (String) -> Unit,
+//    selectedLoadName: String,
+//    loadExpanded: Boolean,
+//    onLoadExpandedChange: (Boolean) -> Unit,
+//    onPickLoadName: (String) -> Unit,
     onSetMode: (MapEditMode) -> Unit,
     onReset: () -> Unit,
     onSave: () -> Unit,
@@ -204,35 +204,35 @@ fun RightPanel(
 
                             Spacer(Modifier.height(10.dp))
 
-//                            // 3. Actions row 2 - Load button + Save
-//                            Row(
-//                                modifier = Modifier.fillMaxWidth(),
-//                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-//                                verticalAlignment = Alignment.CenterVertically
-//                            ) {
-//                                // Save Button
-//                                FilledTonalButton(
-//                                    onClick = onSave,
-//                                    modifier = Modifier.weight(1f),
-//                                    shape = RoundedCornerShape(16.dp)
-//                                ) {
-//                                    Icon(Icons.Default.Save, contentDescription = null)
-//                                    Spacer(Modifier.width(8.dp))
-//                                    Text("Save Map")
-//                                }
-//
-//                                // Load Maps
-//                                FilledTonalButton(
-//                                    onClick = onLoad,
-//                                    enabled = savedMaps.isNotEmpty(),
-//                                    modifier = Modifier.weight(1f),
-//                                    shape = RoundedCornerShape(16.dp)
-//                                ) {
-//                                    Icon(Icons.Default.FolderOpen, contentDescription = null)
-//                                    Spacer(Modifier.width(8.dp))
-//                                    Text("Load")
-//                                }
-//                            }
+                            // 3. Actions row 2 - Load button + Save
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Save Button
+                                FilledTonalButton(
+                                    onClick = onSave,
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Icon(Icons.Default.Save, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Save Map")
+                                }
+
+                                // Load Maps
+                                FilledTonalButton(
+                                    onClick = onLoad,
+                                    enabled = savedMaps.isNotEmpty(),
+                                    modifier = Modifier.weight(1f),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Icon(Icons.Default.FolderOpen, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Load")
+                                }
+                            }
                         }
                     }
                 }

@@ -256,11 +256,19 @@ fun MappingHomeScreen(
     // Ensure we wait until obstacles update, then we sync the UI to show the new obstacles
     var pendingSyncAfterLoad by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState.obstacles, pendingSyncAfterLoad) {
+    LaunchedEffect(uiState.obstacles, uiState.robotPosition, pendingSyncAfterLoad) {
         if (pendingSyncAfterLoad) {
-            // TODO I think better to not send clear to robot first ig
-            // bluetoothViewModel.sendMessage(RobotProtocol.clear())
-            bluetoothViewModel.sendMessage(RobotProtocol.sendObstacleList(uiState.obstacles, retryEnabled, robotStatus))
+            val syncedRobotStatus = uiState.robotPosition?.let {
+                RobotStatus.fromPosition(it.x, it.y, it.faceDir)
+            } ?: robotStatus
+
+            bluetoothViewModel.sendMessage(
+                RobotProtocol.sendObstacleList(
+                    uiState.obstacles,
+                    retryEnabled,
+                    syncedRobotStatus
+                )
+            )
             pendingSyncAfterLoad = false
         }
     }
@@ -302,14 +310,13 @@ fun MappingHomeScreen(
     var saveName by remember { mutableStateOf("map1") }
 
     // --- Load dropdown state ---
-    var loadExpanded by remember { mutableStateOf(false) }
-    var selectedLoadName by remember(uiState.savedMaps) {
-        mutableStateOf(uiState.savedMaps.firstOrNull() ?: "default")
-    }
+    var showLoadDialog by remember { mutableStateOf(false) }
+    var selectedLoadName by remember { mutableStateOf<String?>(null) }
 
-    // Keep selectedLoadName valid if the list changes
     LaunchedEffect(uiState.savedMaps) {
-        if (uiState.savedMaps.isNotEmpty() && selectedLoadName !in uiState.savedMaps) {
+        if (uiState.savedMaps.isEmpty()) {
+            selectedLoadName = null
+        } else if (selectedLoadName !in uiState.savedMaps) {
             selectedLoadName = uiState.savedMaps.first()
         }
     }
@@ -457,10 +464,9 @@ fun MappingHomeScreen(
                             },
                             editMode = uiState.editMode,
                             savedMaps = uiState.savedMaps,
-                            selectedLoadName = selectedLoadName,
-                            loadExpanded = loadExpanded,
-                            onLoadExpandedChange = { loadExpanded = it },
-                            onPickLoadName = { selectedLoadName = it },
+                            onLoad = {
+                                showLoadDialog = true
+                            },
                             onSetMode = { mapViewModel.setEditMode(it) },
                             onReset = {
 
@@ -474,15 +480,6 @@ fun MappingHomeScreen(
                                 ))
                             },
                             onSave = { showSaveDialog = true },
-                            onLoad = {
-                                // Return the name of the loaded map, default if it doesnt exist
-                                val name = if (uiState.savedMaps.isNotEmpty()) selectedLoadName else "default"
-
-                                // Ensure we send the obstacle lists only after loading
-                                pendingSyncAfterLoad = true
-                                // loadMap is an async function call so we must wait for uiState.obstacles to update first
-                                mapViewModel.loadMap(name)
-                            },
                             statusTitle = "Activity Status",
                             statusSubtitle = statusSubtitle,
                             // To sync obstacle list by sending it to RPI
@@ -519,10 +516,9 @@ fun MappingHomeScreen(
                             },
                             editMode = uiState.editMode,
                             savedMaps = uiState.savedMaps,
-                            selectedLoadName = selectedLoadName,
-                            loadExpanded = loadExpanded,
-                            onLoadExpandedChange = { loadExpanded = it },
-                            onPickLoadName = { selectedLoadName = it },
+                            onLoad = {
+                                showLoadDialog = true
+                            },
                             onSetMode = { mapViewModel.setEditMode(it) },
                             onReset = {
 
@@ -536,15 +532,6 @@ fun MappingHomeScreen(
                                 ))
                             },
                             onSave = { showSaveDialog = true },
-                            onLoad = {
-                                // Return the name of the loaded map, default if it doesnt exist
-                                val name = if (uiState.savedMaps.isNotEmpty()) selectedLoadName else "default"
-
-                                // Ensure we send the obstacle lists only after loading
-                                pendingSyncAfterLoad = true
-                                // loadMap is an async function call so we must wait for uiState.obstacles to update first
-                                mapViewModel.loadMap(name)
-                            },
                             statusTitle = "Activity Status",
                             statusSubtitle = statusSubtitle,
                             // To sync obstacle list by sending it to RPI
@@ -792,10 +779,9 @@ fun MappingHomeScreen(
                         },
                         editMode = uiState.editMode,
                         savedMaps = uiState.savedMaps,
-                        selectedLoadName = selectedLoadName,
-                        loadExpanded = loadExpanded,
-                        onLoadExpandedChange = { loadExpanded = it },
-                        onPickLoadName = { selectedLoadName = it },
+                        onLoad = {
+                            showLoadDialog = true
+                        },
                         onSetMode = { mapViewModel.setEditMode(it) },
                         onReset = {
                             mapViewModel.resetAll()
@@ -810,14 +796,6 @@ fun MappingHomeScreen(
                             )
                         },
                         onSave = { showSaveDialog = true },
-                        onLoad = {
-                            // Return the name of the loaded map, default if it doesnt exist
-                            val name = if (uiState.savedMaps.isNotEmpty()) selectedLoadName else "default"
-
-                            // Ensure we send the obstacle lists only after loading
-                            pendingSyncAfterLoad = true
-                            mapViewModel.loadMap(name)
-                        },
                         statusTitle = "Activity Status",
                         statusSubtitle = statusSubtitle,
                         // To sync obstacle list by sending it to RPI
@@ -855,10 +833,86 @@ fun MappingHomeScreen(
         onClear = null
     )
 
+    // Load Dialog
+    if (showLoadDialog) {
+        AlertDialog(
+            onDismissRequest = { showLoadDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            tonalElevation = 6.dp,
+            title = { Text("Load Map") },
+            text = {
+                if (uiState.savedMaps.isEmpty()) {
+                    Text("No saved maps available.")
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        uiState.savedMaps.forEach { mapName ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    RadioButton(
+                                        selected = selectedLoadName == mapName,
+                                        onClick = { selectedLoadName = mapName }
+                                    )
+                                    Text(
+                                        text = mapName,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+
+                                TextButton(
+                                    onClick = {
+                                        mapViewModel.deleteMap(mapName)
+                                        if (selectedLoadName == mapName) {
+                                            selectedLoadName = uiState.savedMaps.firstOrNull { it != mapName }
+                                        }
+                                    }
+                                ) {
+                                    Text("Delete")
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val chosen = selectedLoadName
+                        if (chosen != null) {
+                            pendingSyncAfterLoad = true
+                            mapViewModel.loadMap(chosen)
+                        }
+                        showLoadDialog = false
+                    },
+                    enabled = selectedLoadName != null && uiState.savedMaps.isNotEmpty()
+                ) {
+                    Text("Load")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLoadDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     // --- Save dialog ---
     if (showSaveDialog) {
         AlertDialog(
             onDismissRequest = { showSaveDialog = false },
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface,
+            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            tonalElevation = 6.dp,
             title = { Text("Save Map") },
             text = {
                 Column {
