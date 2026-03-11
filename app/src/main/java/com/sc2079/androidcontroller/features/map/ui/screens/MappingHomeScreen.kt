@@ -253,27 +253,6 @@ fun MappingHomeScreen(
         lastProcessedIdx = messages.size
     }
 
-    // Ensure we wait until obstacles update, then we sync the UI to show the new obstacles
-    var pendingSyncAfterLoad by remember { mutableStateOf(false) }
-
-    LaunchedEffect(uiState.obstacles, uiState.robotPosition, pendingSyncAfterLoad) {
-        if (pendingSyncAfterLoad) {
-            val syncedRobotStatus = uiState.robotPosition?.let {
-                RobotStatus.fromPosition(it.x, it.y, it.faceDir)
-            } ?: robotStatus
-
-            bluetoothViewModel.sendMessage(
-                RobotProtocol.sendObstacleList(
-                    uiState.obstacles,
-                    retryEnabled,
-                    syncedRobotStatus
-                )
-            )
-            pendingSyncAfterLoad = false
-        }
-    }
-
-
     // Face picker dialog state
     var facePickerForObstacle by remember { mutableStateOf<Int?>(null) }
     val obstacleNo = facePickerForObstacle
@@ -887,7 +866,6 @@ fun MappingHomeScreen(
                     onClick = {
                         val chosen = selectedLoadName
                         if (chosen != null) {
-                            pendingSyncAfterLoad = true
                             mapViewModel.loadMap(chosen)
                         }
                         showLoadDialog = false
