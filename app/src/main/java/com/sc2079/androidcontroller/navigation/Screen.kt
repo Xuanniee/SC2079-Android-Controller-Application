@@ -8,4 +8,6 @@ sealed class Screen(val route: String) {
     data object Bluetooth: Screen("bluetooth")
     data object BluetoothConnection: Screen("bluetooth_connection")
     data object Map: Screen(route = "map")
+    object Task2 : Screen("task2")
+
 }

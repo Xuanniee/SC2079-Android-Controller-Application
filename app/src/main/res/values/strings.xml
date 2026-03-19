@@ -82,4 +82,5 @@
     <string name="use_map">Use Map</string>
     <string name="better_map_ui">Better Map UI</string>
     <string name="bluetooth_status">Bluetooth Status</string>
+    <string name="task_2_controls">Task 2 Controls</string>
 </resources>

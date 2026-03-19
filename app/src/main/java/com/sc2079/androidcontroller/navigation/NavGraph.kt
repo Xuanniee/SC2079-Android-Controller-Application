@@ -1,5 +1,6 @@
 package com.sc2079.androidcontroller.navigation
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +17,7 @@ import com.sc2079.androidcontroller.features.bluetooth.ui.BluetoothSetupScreen
 import com.sc2079.androidcontroller.features.map.presentation.MapViewModel
 import com.sc2079.androidcontroller.features.map.ui.screens.MappingHomeScreen
 import com.sc2079.androidcontroller.ui.screens.HomeScreen
+import com.sc2079.androidcontroller.ui.screens.Task2Screen
 
 /**
  * Main navigation graph for the app
@@ -53,6 +55,13 @@ fun NavGraph(
         composable(Screen.Map.route) {
             MappingHomeScreen(
                 bluetoothViewModel = bluetoothViewModel, mapViewModel = mapViewModel
+            )
+        }
+
+        composable(Screen.Task2.route) {
+            Task2Screen(
+                bluetoothViewModel = bluetoothViewModel,
+                modifier = Modifier.fillMaxSize()
             )
         }
     }

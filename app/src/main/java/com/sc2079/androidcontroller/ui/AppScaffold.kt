@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.LegendToggle
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.SettingsRemote
+import androidx.compose.material.icons.filled.Start
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.DrawerValue
@@ -145,6 +147,12 @@ fun AppScaffold(
             screen = Screen.Map,
             descriptionResId = R.string.obstacle_robot_placement
         ),
+        NavigationItem(
+            titleResId = R.string.task_2_controls,
+            icon = Icons.Default.SettingsRemote,
+            screen = Screen.Task2,
+            descriptionResId = R.string.obstacle_robot_placement
+        ),
     )
     
     // Get current screen title
@@ -152,6 +160,8 @@ fun AppScaffold(
         Screen.Home.route -> stringResource(R.string.device_connected)
         Screen.Bluetooth.route -> stringResource(R.string.bluetooth_title)
         Screen.BluetoothConnection.route -> stringResource(R.string.nav_bluetooth_connection)
+        Screen.Map.route -> stringResource(R.string.map)
+        Screen.Task2.route -> stringResource(R.string.task_2_controls)
         else -> stringResource(R.string.app_name)
     }
     
